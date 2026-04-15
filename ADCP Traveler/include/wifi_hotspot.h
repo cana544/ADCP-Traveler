@@ -19,7 +19,7 @@ class WifiHotspot {
 
   void setLed(bool on);
   void sendLedStateResponse();
-  void serveFile(const char *path, const char *contentType);
+  void serveFile(const char* path, const char* contentType);
   void handleRoot();
   void handleLedOn();
   void handleLedOff();

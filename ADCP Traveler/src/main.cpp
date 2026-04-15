@@ -13,6 +13,4 @@ void setup() {
   wifiHotspot.begin(Config::Pins::ONBOARD_LED);
 }
 
-void loop() {
-  wifiHotspot.update();
-}
+void loop() { wifiHotspot.update(); }
