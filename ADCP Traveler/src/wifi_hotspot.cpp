@@ -8,7 +8,6 @@
 namespace {
 WebServer server(80);
 WifiHotspot *activeHotspot = nullptr;
-constexpr byte kDnsPort = 53;
 }  // namespace
 
 WifiHotspot::WifiHotspot() : onboardLedPin_(2), ledOn_(false) {}
@@ -23,19 +22,33 @@ void WifiHotspot::sendLedStateResponse() {
   server.send(200, "application/json", "{\"state\":\"" + state + "\"}");
 }
 
-void WifiHotspot::serveFile(const char *path, const char *contentType) {
+bool WifiHotspot::serveFile(const char *path, const char *contentType) {
   File file = SPIFFS.open(path, FILE_READ);
   if (!file) {
-    server.send(500, "text/plain", "Failed to open file\n");
-    return;
+    return false;
   }
 
   server.streamFile(file, contentType);
   file.close();
+  return true;
 }
 
 void WifiHotspot::handleRoot() {
-  serveFile("/index.html", "text/html");
+  if (serveFile("/index.html", "text/html")) {
+    return;
+  }
+
+  String response;
+  response += "<!DOCTYPE html><html><head><meta charset='UTF-8'>";
+  response += "<meta name='viewport' content='width=device-width, initial-scale=1.0'>";
+  response += "<title>ESP32 Control</title></head><body style='font-family:Arial,sans-serif;";
+  response += "padding:24px;line-height:1.6;'>";
+  response += "<h1>ESP32 control page not found</h1>";
+  response += "<p>The ESP32 web server is running, but <code>index.html</code> was not found in SPIFFS.</p>";
+  response += "<p>Upload the filesystem image from PlatformIO, then refresh <code>http://192.168.4.1/</code>.</p>";
+  response += "<p>Available API routes: <code>/led/on</code>, <code>/led/off</code>, <code>/led/status</code>.</p>";
+  response += "</body></html>";
+  server.send(200, "text/html", response);
 }
 
 void WifiHotspot::handleLedOn() {
@@ -52,14 +65,8 @@ void WifiHotspot::handleLedStatus() {
   sendLedStateResponse();
 }
 
-void WifiHotspot::handleCaptivePortalProbe() {
-  server.sendHeader("Location", String("http://") + WiFi.softAPIP().toString() + "/",
-                    true);
-  server.send(302, "text/plain", "");
-}
-
 void WifiHotspot::handleNotFound() {
-  handleCaptivePortalProbe();
+  server.send(404, "text/plain", "Not found\n");
 }
 
 void WifiHotspot::begin(uint8_t ledPin) {
@@ -88,8 +95,6 @@ void WifiHotspot::begin(uint8_t ledPin) {
     return;
   }
 
-  dnsServer_.start(kDnsPort, "*", WiFi.softAPIP());
-
   server.on("/", []() { activeHotspot->handleRoot(); });
   server.on("/index.html", []() { activeHotspot->handleRoot(); });
   server.on("/style.css",
@@ -101,12 +106,6 @@ void WifiHotspot::begin(uint8_t ledPin) {
   server.on("/led/on", []() { activeHotspot->handleLedOn(); });
   server.on("/led/off", []() { activeHotspot->handleLedOff(); });
   server.on("/led/status", []() { activeHotspot->handleLedStatus(); });
-  server.on("/generate_204", []() { activeHotspot->handleCaptivePortalProbe(); });
-  server.on("/hotspot-detect.html",
-            []() { activeHotspot->handleCaptivePortalProbe(); });
-  server.on("/connecttest.txt", []() { activeHotspot->handleCaptivePortalProbe(); });
-  server.on("/ncsi.txt", []() { activeHotspot->handleCaptivePortalProbe(); });
-  server.on("/fwlink", []() { activeHotspot->handleCaptivePortalProbe(); });
   server.onNotFound([]() { activeHotspot->handleNotFound(); });
   server.begin();
 
@@ -114,7 +113,6 @@ void WifiHotspot::begin(uint8_t ledPin) {
 }
 
 void WifiHotspot::update() {
-  dnsServer_.processNextRequest();
   server.handleClient();
 }
 

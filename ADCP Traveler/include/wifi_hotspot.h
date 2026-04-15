@@ -2,7 +2,6 @@
 #define WIFI_HOTSPOT_H
 
 #include <Arduino.h>
-#include <DNSServer.h>
 
 class WifiHotspot {
  public:
@@ -15,16 +14,14 @@ class WifiHotspot {
  private:
   uint8_t onboardLedPin_;
   bool ledOn_;
-  DNSServer dnsServer_;
 
   void setLed(bool on);
   void sendLedStateResponse();
-  void serveFile(const char* path, const char* contentType);
+  bool serveFile(const char* path, const char* contentType);
   void handleRoot();
   void handleLedOn();
   void handleLedOff();
   void handleLedStatus();
-  void handleCaptivePortalProbe();
   void handleNotFound();
 };
 
