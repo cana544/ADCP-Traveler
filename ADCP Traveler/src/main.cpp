@@ -1,18 +1,18 @@
 #include <Arduino.h>
 
-#include "wifi_control.h"
+#include "config.h"
+#include "wifi_hotspot.h"
 
-namespace {
-constexpr uint8_t ONBOARD_LED_PIN = 2;
-}  // namespace
+WifiHotspot wifiHotspot;
 
 void setup() {
   Serial.begin(115200);
   delay(1000);
 
-  WifiControl::begin(ONBOARD_LED_PIN);
+  pinMode(Config::Pins::ONBOARD_LED, OUTPUT);
+  wifiHotspot.begin(Config::Pins::ONBOARD_LED);
 }
 
 void loop() {
-  WifiControl::update();
+  wifiHotspot.update();
 }
