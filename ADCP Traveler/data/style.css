@@ -81,6 +81,53 @@ h1 {
   font-size: 1rem;
 }
 
+.signal-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.wifi-bars {
+  display: inline-flex;
+  align-items: end;
+  gap: 4px;
+  height: 20px;
+}
+
+.wifi-bar {
+  width: 5px;
+  border-radius: 999px;
+  background: rgba(82, 96, 109, 0.25);
+  transition: background-color 0.18s ease, opacity 0.18s ease;
+}
+
+.wifi-bar:nth-child(1) {
+  height: 6px;
+}
+
+.wifi-bar:nth-child(2) {
+  height: 10px;
+}
+
+.wifi-bar:nth-child(3) {
+  height: 14px;
+}
+
+.wifi-bar:nth-child(4) {
+  height: 18px;
+}
+
+.wifi-bars[data-quality="1"] .wifi-bar:nth-child(-n + 1),
+.wifi-bars[data-quality="2"] .wifi-bar:nth-child(-n + 2),
+.wifi-bars[data-quality="3"] .wifi-bar:nth-child(-n + 3),
+.wifi-bars[data-quality="4"] .wifi-bar:nth-child(-n + 4) {
+  background: #0f9d58;
+}
+
+.wifi-bars[data-quality="0"] .wifi-bar {
+  background: rgba(214, 69, 69, 0.2);
+}
+
 .status-on {
   color: var(--on);
 }

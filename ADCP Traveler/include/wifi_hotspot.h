@@ -17,11 +17,13 @@ class WifiHotspot {
 
   void setLed(bool on);
   void sendLedStateResponse();
+  void sendWifiSignalResponse();
   bool serveFile(const char* path, const char* contentType);
   void handleRoot();
   void handleLedOn();
   void handleLedOff();
   void handleLedStatus();
+  void handleWifiSignal();
   void handleNotFound();
 };
 
