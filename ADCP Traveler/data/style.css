@@ -1,0 +1,149 @@
+:root {
+  --bg-top: #f6efe3;
+  --bg-bottom: #d7e8f3;
+  --card: rgba(255, 255, 255, 0.9);
+  --text: #1f2933;
+  --muted: #52606d;
+  --on: #0f9d58;
+  --off: #d64545;
+  --shadow: rgba(31, 41, 51, 0.18);
+  --border: rgba(31, 41, 51, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.8), transparent 38%),
+    linear-gradient(160deg, var(--bg-top), var(--bg-bottom));
+}
+
+.app-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.control-card {
+  width: min(100%, 460px);
+  padding: 32px 28px;
+  border-radius: 24px;
+  background: var(--card);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 20px 45px var(--shadow);
+  border: 1px solid var(--border);
+}
+
+.eyebrow {
+  margin: 0 0 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(2rem, 5vw, 2.8rem);
+}
+
+.description {
+  margin: 14px 0 24px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.status-panel {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.status-label {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.status-value {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.status-on {
+  color: var(--on);
+}
+
+.status-off {
+  color: var(--off);
+}
+
+.button-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.action-button {
+  border: none;
+  border-radius: 16px;
+  padding: 16px 18px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    opacity 0.18s ease;
+}
+
+.action-button:hover {
+  transform: translateY(-1px);
+}
+
+.action-button:active {
+  transform: translateY(1px);
+}
+
+.action-button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.action-on {
+  background: linear-gradient(135deg, #13b46b, #0f9d58);
+  box-shadow: 0 12px 22px rgba(15, 157, 88, 0.3);
+}
+
+.action-off {
+  background: linear-gradient(135deg, #ef5d5d, #d64545);
+  box-shadow: 0 12px 22px rgba(214, 69, 69, 0.28);
+}
+
+.message {
+  min-height: 1.5rem;
+  margin: 18px 0 0;
+  color: var(--muted);
+}
+
+@media (max-width: 520px) {
+  .control-card {
+    padding: 24px 20px;
+  }
+
+  .button-row {
+    grid-template-columns: 1fr;
+  }
+}

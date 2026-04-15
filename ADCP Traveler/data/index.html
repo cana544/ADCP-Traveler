@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ESP32 LED Control</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="control-card">
+        <p class="eyebrow">ESP32 Control Page</p>
+        <h1>LED Switch</h1>
+        <p class="description">
+          Use the buttons below to send HTTP commands to the ESP32 and control
+          the onboard LED.
+        </p>
+
+        <div class="status-panel">
+          <span class="status-label">Current state</span>
+          <span id="led-state" class="status-value status-off">OFF</span>
+        </div>
+
+        <div class="button-row">
+          <button id="led-on" class="action-button action-on" type="button">
+            LED ON
+          </button>
+          <button id="led-off" class="action-button action-off" type="button">
+            LED OFF
+          </button>
+        </div>
+
+        <p id="message" class="message" aria-live="polite"></p>
+      </section>
+    </main>
+
+    <script src="/script.js"></script>
+  </body>
+</html>

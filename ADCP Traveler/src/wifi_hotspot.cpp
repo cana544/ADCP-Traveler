@@ -1,12 +1,14 @@
 #include "wifi_hotspot.h"
 #include "config.h"
 
+#include <SPIFFS.h>
 #include <WebServer.h>
 #include <WiFi.h>
 
 namespace {
 WebServer server(80);
 WifiHotspot *activeHotspot = nullptr;
+constexpr byte kDnsPort = 53;
 }  // namespace
 
 WifiHotspot::WifiHotspot() : onboardLedPin_(2), ledOn_(false) {}
@@ -18,16 +20,22 @@ void WifiHotspot::setLed(bool on) {
 
 void WifiHotspot::sendLedStateResponse() {
   const String state = ledOn_ ? "on" : "off";
-  server.send(200, "text/plain", "LED is " + state + "\n");
+  server.send(200, "application/json", "{\"state\":\"" + state + "\"}");
+}
+
+void WifiHotspot::serveFile(const char *path, const char *contentType) {
+  File file = SPIFFS.open(path, FILE_READ);
+  if (!file) {
+    server.send(500, "text/plain", "Failed to open file\n");
+    return;
+  }
+
+  server.streamFile(file, contentType);
+  file.close();
 }
 
 void WifiHotspot::handleRoot() {
-  String response;
-  response += "ESP32 LED control\n";
-  response += "GET /led/on\n";
-  response += "GET /led/off\n";
-  response += "GET /led/status\n";
-  server.send(200, "text/plain", response);
+  serveFile("/index.html", "text/html");
 }
 
 void WifiHotspot::handleLedOn() {
@@ -44,8 +52,14 @@ void WifiHotspot::handleLedStatus() {
   sendLedStateResponse();
 }
 
+void WifiHotspot::handleCaptivePortalProbe() {
+  server.sendHeader("Location", String("http://") + WiFi.softAPIP().toString() + "/",
+                    true);
+  server.send(302, "text/plain", "");
+}
+
 void WifiHotspot::handleNotFound() {
-  server.send(404, "text/plain", "Not found\n");
+  handleCaptivePortalProbe();
 }
 
 void WifiHotspot::begin(uint8_t ledPin) {
@@ -69,10 +83,30 @@ void WifiHotspot::begin(uint8_t ledPin) {
   Serial.print("AP IP address: ");
   Serial.println(WiFi.softAPIP());
 
+  if (!SPIFFS.begin(true)) {
+    Serial.println("Failed to mount SPIFFS");
+    return;
+  }
+
+  dnsServer_.start(kDnsPort, "*", WiFi.softAPIP());
+
   server.on("/", []() { activeHotspot->handleRoot(); });
+  server.on("/index.html", []() { activeHotspot->handleRoot(); });
+  server.on("/style.css",
+            HTTP_GET,
+            []() { activeHotspot->serveFile("/style.css", "text/css"); });
+  server.on("/script.js",
+            HTTP_GET,
+            []() { activeHotspot->serveFile("/script.js", "application/javascript"); });
   server.on("/led/on", []() { activeHotspot->handleLedOn(); });
   server.on("/led/off", []() { activeHotspot->handleLedOff(); });
   server.on("/led/status", []() { activeHotspot->handleLedStatus(); });
+  server.on("/generate_204", []() { activeHotspot->handleCaptivePortalProbe(); });
+  server.on("/hotspot-detect.html",
+            []() { activeHotspot->handleCaptivePortalProbe(); });
+  server.on("/connecttest.txt", []() { activeHotspot->handleCaptivePortalProbe(); });
+  server.on("/ncsi.txt", []() { activeHotspot->handleCaptivePortalProbe(); });
+  server.on("/fwlink", []() { activeHotspot->handleCaptivePortalProbe(); });
   server.onNotFound([]() { activeHotspot->handleNotFound(); });
   server.begin();
 
@@ -80,6 +114,7 @@ void WifiHotspot::begin(uint8_t ledPin) {
 }
 
 void WifiHotspot::update() {
+  dnsServer_.processNextRequest();
   server.handleClient();
 }
 
