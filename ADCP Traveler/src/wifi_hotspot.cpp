@@ -25,6 +25,8 @@ void WifiHotspot::sendLedStateResponse() {
 bool WifiHotspot::serveFile(const char *path, const char *contentType) {
   File file = SPIFFS.open(path, FILE_READ);
   if (!file) {
+    Serial.print("Missing SPIFFS file: ");
+    Serial.println(path);
     return false;
   }
 
@@ -32,6 +34,13 @@ bool WifiHotspot::serveFile(const char *path, const char *contentType) {
   file.close();
   return true;
 }
+
+namespace {
+void redirectToRoot() {
+  server.sendHeader("Location", "http://192.168.4.1/", true);
+  server.send(302, "text/plain", "");
+}
+}  // namespace
 
 void WifiHotspot::handleRoot() {
   if (serveFile("/index.html", "text/html")) {
@@ -66,6 +75,20 @@ void WifiHotspot::handleLedStatus() {
 }
 
 void WifiHotspot::handleNotFound() {
+  const String uri = server.uri();
+
+  if (server.method() == HTTP_GET &&
+      (uri == "/generate_204" || uri == "/hotspot-detect.html" ||
+       uri == "/connecttest.txt" || uri == "/ncsi.txt" || uri == "/fwlink")) {
+    redirectToRoot();
+    return;
+  }
+
+  if (server.method() == HTTP_GET && uri.indexOf('.') == -1) {
+    handleRoot();
+    return;
+  }
+
   server.send(404, "text/plain", "Not found\n");
 }
 
@@ -103,6 +126,11 @@ void WifiHotspot::begin(uint8_t ledPin) {
   server.on("/script.js",
             HTTP_GET,
             []() { activeHotspot->serveFile("/script.js", "application/javascript"); });
+  server.on("/generate_204", HTTP_GET, []() { redirectToRoot(); });
+  server.on("/hotspot-detect.html", HTTP_GET, []() { redirectToRoot(); });
+  server.on("/connecttest.txt", HTTP_GET, []() { redirectToRoot(); });
+  server.on("/ncsi.txt", HTTP_GET, []() { redirectToRoot(); });
+  server.on("/fwlink", HTTP_GET, []() { redirectToRoot(); });
   server.on("/led/on", []() { activeHotspot->handleLedOn(); });
   server.on("/led/off", []() { activeHotspot->handleLedOff(); });
   server.on("/led/status", []() { activeHotspot->handleLedStatus(); });
