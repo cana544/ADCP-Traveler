@@ -8,21 +8,29 @@
 
 namespace WifiSignalReporter {
 void sendResponse(AsyncWebServerRequest* request) {
+  const int stationCount = WiFi.softAPgetStationNum();
+  if (stationCount <= 0) {
+    request->send(200, "application/json",
+                  "{\"connected\":false,\"rssi\":null,\"quality\":0,"
+                  "\"label\":\"no device\"}");
+    return;
+  }
+
   wifi_sta_list_t stationList;
   memset(&stationList, 0, sizeof(stationList));
 
   esp_err_t result = esp_wifi_ap_get_sta_list(&stationList);
   if (result != ESP_OK) {
-    request->send(500, "application/json",
-                  "{\"connected\":false,\"rssi\":null,\"quality\":0,"
-                  "\"label\":\"unavailable\"}");
+    request->send(200, "application/json",
+                  "{\"connected\":true,\"rssi\":null,\"quality\":0,"
+                  "\"label\":\"connected\"}");
     return;
   }
 
   if (stationList.num == 0) {
     request->send(200, "application/json",
-                  "{\"connected\":false,\"rssi\":null,\"quality\":0,"
-                  "\"label\":\"no device\"}");
+                  "{\"connected\":true,\"rssi\":null,\"quality\":0,"
+                  "\"label\":\"connected\"}");
     return;
   }
 

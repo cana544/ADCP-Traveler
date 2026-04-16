@@ -11,6 +11,8 @@ let currentPwm = 0;
 let isUserDragging = false;
 let isLedOn = false;
 let ws = null;
+let pwmSendTimer = null;
+let pendingPwmValue = null;
 
 function setButtonsDisabled(disabled) {
   buttons.forEach((button) => {
@@ -67,9 +69,30 @@ function updateWifiSignal(data) {
     return;
   }
 
-  wifiSignalElement.textContent = `${data.label.toUpperCase()} (${data.rssi} dBm)`;
+  if (Number.isFinite(data.rssi)) {
+    wifiSignalElement.textContent = `${data.label.toUpperCase()} (${data.rssi} dBm)`;
+  } else {
+    wifiSignalElement.textContent = `${data.label.toUpperCase()}`;
+  }
   wifiSignalElement.classList.remove("status-off");
   wifiSignalElement.classList.add("status-on");
+}
+
+async function refreshWifiSignal() {
+  try {
+    const response = await fetch('/wifi/signal', { keepalive: true });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    updateWifiSignal(data);
+  } catch (error) {
+    wifiBarsElement.dataset.quality = '0';
+    wifiSignalElement.textContent = 'Unavailable';
+    wifiSignalElement.classList.remove('status-on');
+    wifiSignalElement.classList.add('status-off');
+  }
 }
 
 // WebSocket connection
@@ -122,7 +145,23 @@ function sendWebSocketCommand(cmd) {
 }
 
 function sendPwmValue(pwmValue) {
-  sendWebSocketCommand({ cmd: 'pwm', value: pwmValue });
+  pendingPwmValue = pwmValue;
+
+  if (pwmSendTimer) {
+    return;
+  }
+
+  pwmSendTimer = setTimeout(() => {
+    pwmSendTimer = null;
+
+    if (pendingPwmValue === null) {
+      return;
+    }
+
+    const valueToSend = pendingPwmValue;
+    pendingPwmValue = null;
+    sendWebSocketCommand({ cmd: 'pwm', value: valueToSend });
+  }, 30);
 }
 
 function sendOnCommand() {
@@ -136,7 +175,8 @@ function sendOffCommand() {
   setButtonsDisabled(true);
   messageElement.textContent = 'Turning LED OFF...';
   sendWebSocketCommand({ cmd: 'off' });
-  setTimeout(() => { setButtonsDisabled(false); }, 500);}
+  setTimeout(() => { setButtonsDisabled(false); }, 500);
+}
 brightnessSlider.addEventListener("mousedown", () => {
   isUserDragging = true;
 });
@@ -188,3 +228,5 @@ document
 
 // Initialize WebSocket on page load
 connectWebSocket();
+refreshWifiSignal();
+setInterval(refreshWifiSignal, 5000);

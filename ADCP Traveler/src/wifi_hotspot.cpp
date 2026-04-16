@@ -3,6 +3,7 @@
 #include <ArduinoJson.h>
 #include <SPIFFS.h>
 #include <WiFi.h>
+#include <esp_wifi.h>
 
 #include "config.h"
 #include "wifi_signal_reporter.h"
@@ -30,8 +31,57 @@ void WifiHotspot::sendLedStateResponse(AsyncWebServerRequest* request) {
 }
 
 void WifiHotspot::sendWifiSignalResponse(AsyncWebServerRequest* request) {
-  // For now, send a simple response
-  request->send(200, "application/json", "{\"connected\":false}");
+  const bool websocketConnected = ws_.count() > 0;
+  const int stationCount = WiFi.softAPgetStationNum();
+
+  if (!websocketConnected && stationCount <= 0) {
+    request->send(200, "application/json",
+                  "{\"connected\":false,\"rssi\":null,\"quality\":0,"
+                  "\"label\":\"no device\"}");
+    return;
+  }
+
+  wifi_sta_list_t stationList;
+  memset(&stationList, 0, sizeof(stationList));
+
+  if (esp_wifi_ap_get_sta_list(&stationList) != ESP_OK ||
+      stationList.num == 0) {
+    request->send(200, "application/json",
+                  "{\"connected\":true,\"rssi\":null,\"quality\":0,"
+                  "\"label\":\"connected\"}");
+    return;
+  }
+
+  const int rssi = stationList.sta[0].rssi;
+  int quality = 0;
+
+  if (rssi >= -55) {
+    quality = 4;
+  } else if (rssi >= -67) {
+    quality = 3;
+  } else if (rssi >= -75) {
+    quality = 2;
+  } else if (rssi >= -85) {
+    quality = 1;
+  }
+
+  String label = "weak";
+  if (quality >= 4) {
+    label = "excellent";
+  } else if (quality == 3) {
+    label = "good";
+  } else if (quality == 2) {
+    label = "fair";
+  }
+
+  String response = "{\"connected\":true,\"rssi\":";
+  response += String(rssi);
+  response += ",\"quality\":";
+  response += String(quality);
+  response += ",\"label\":\"";
+  response += label;
+  response += "\"}";
+  request->send(200, "application/json", response);
 }
 
 bool WifiHotspot::serveFile(AsyncWebServerRequest* request, const char* path,
