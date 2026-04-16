@@ -15,6 +15,7 @@ class WifiHotspot {
   uint8_t onboardLedPin_;
   bool ledOn_;
   uint8_t currentPwm_;
+  uint8_t lastPwm_;  // Remember brightness before turning off
 
   void setLed(bool on);
   void setPwm(uint8_t value);

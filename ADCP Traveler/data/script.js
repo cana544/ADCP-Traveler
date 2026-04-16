@@ -9,6 +9,8 @@ const buttons = Array.from(document.querySelectorAll(".action-button"));
 
 let currentPwm = 0;
 let isUserDragging = false;
+let pendingPwmTimeout = null;
+const PWM_THROTTLE_MS = 100;  // Send PWM updates every 100ms while dragging
 
 function setButtonsDisabled(disabled) {
   buttons.forEach((button) => {
@@ -78,12 +80,12 @@ async function sendPwmCommand(pwmValue) {
   }
 }
 
-async function sendLedCommand(pwmValue, pendingText) {
+async function sendLedCommand(path, pendingText) {
   setButtonsDisabled(true);
   messageElement.textContent = pendingText;
 
   try {
-    const response = await fetch(`/led/pwm/${pwmValue}`);
+    const response = await fetch(path);
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
@@ -91,11 +93,9 @@ async function sendLedCommand(pwmValue, pendingText) {
     const data = await response.json();
     updateState(data.state, data.pwm);
     messageElement.textContent =
-      pwmValue === 255
-        ? "LED turned ON."
-        : pwmValue === 0
-          ? "LED turned OFF."
-          : `Brightness set to ${Math.round((pwmValue / 255) * 100)}%.`;
+      path === "/led/on"
+        ? "LED turned ON (restored brightness)."
+        : "LED turned OFF.";
   } catch (error) {
     messageElement.textContent =
       "Could not reach the ESP32. Check that you are connected to its Wi-Fi.";
@@ -140,29 +140,61 @@ brightnessSlider.addEventListener("touchstart", () => {
 
 brightnessSlider.addEventListener("mouseup", () => {
   isUserDragging = false;
+  // Send final PWM value when done dragging
+  if (pendingPwmTimeout) {
+    clearTimeout(pendingPwmTimeout);
+    pendingPwmTimeout = null;
+  }
+  const pwmValue = parseInt(brightnessSlider.value, 10);
+  sendPwmCommand(pwmValue);
 });
 
 brightnessSlider.addEventListener("touchend", () => {
   isUserDragging = false;
+  // Send final PWM value when done dragging
+  if (pendingPwmTimeout) {
+    clearTimeout(pendingPwmTimeout);
+    pendingPwmTimeout = null;
+  }
+  const pwmValue = parseInt(brightnessSlider.value, 10);
+  sendPwmCommand(pwmValue);
 });
 
 brightnessSlider.addEventListener("input", (event) => {
   const pwmValue = parseInt(event.target.value, 10);
   updateBrightnessDisplay(pwmValue);
   messageElement.textContent = "Adjusting brightness...";
+
+  // Throttle PWM commands while dragging
+  if (pendingPwmTimeout) {
+    clearTimeout(pendingPwmTimeout);
+  }
+
+  pendingPwmTimeout = setTimeout(() => {
+    sendPwmCommand(pwmValue);
+    pendingPwmTimeout = null;
+  }, PWM_THROTTLE_MS);
 });
 
 brightnessSlider.addEventListener("change", (event) => {
-  const pwmValue = parseInt(event.target.value, 10);
-  sendPwmCommand(pwmValue);
+  // Change event fires on drag end on some browsers
+  // Ensure final value is sent
+  if (!isUserDragging) {
+    const pwmValue = parseInt(event.target.value, 10);
+    if (pendingPwmTimeout) {
+      clearTimeout(pendingPwmTimeout);
+      pendingPwmTimeout = null;
+    }
+    sendPwmCommand(pwmValue);
+  }
 });
 
 document
   .getElementById("led-on")
-  .addEventListener("click", () => sendLedCommand(255, "Sending LED ON command..."));
+  .addEventListener("click", () => sendLedCommand("/led/on", "Sending LED ON command..."));
 document
   .getElementById("led-off")
-  .addEventListener("click", () => sendLedCommand(0, "Sending LED OFF command..."));
+  .addEventListener("click", () => sendLedCommand("/led/off", "Sending LED OFF command..."));
 
 refreshStatus();
 setInterval(refreshStatus, 5000);

@@ -12,14 +12,20 @@ WebServer server(80);
 WifiHotspot* activeHotspot = nullptr;
 }  // namespace
 
-WifiHotspot::WifiHotspot() : onboardLedPin_(2), ledOn_(false), currentPwm_(0) {}
+WifiHotspot::WifiHotspot()
+    : onboardLedPin_(2), ledOn_(false), currentPwm_(0), lastPwm_(255) {}
 
 void WifiHotspot::setLed(bool on) {
   ledOn_ = on;
   if (on) {
-    currentPwm_ = 255;
-    ledcWrite(0, 255);
+    // Turn on: restore to last brightness
+    currentPwm_ = lastPwm_;
+    ledcWrite(0, lastPwm_);
   } else {
+    // Turn off: save current brightness, then turn off
+    if (currentPwm_ > 0) {
+      lastPwm_ = currentPwm_;
+    }
     currentPwm_ = 0;
     ledcWrite(0, 0);
   }
@@ -28,6 +34,9 @@ void WifiHotspot::setLed(bool on) {
 void WifiHotspot::setPwm(uint8_t value) {
   currentPwm_ = value;
   ledOn_ = (value > 0);
+  if (value > 0) {
+    lastPwm_ = value;  // Remember this brightness for next on
+  }
   ledcWrite(0, value);
 }
 
