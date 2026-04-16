@@ -3,6 +3,8 @@
 
 #include <Arduino.h>
 
+#include "led_controller.h"
+
 class WifiHotspot {
  public:
   WifiHotspot();
@@ -13,9 +15,7 @@ class WifiHotspot {
 
  private:
   uint8_t onboardLedPin_;
-  bool ledOn_;
-  uint8_t currentPwm_;
-  uint8_t lastPwm_;  // Remember brightness before turning off
+  LedController ledController_;
 
   void setLed(bool on);
   void setPwm(uint8_t value);

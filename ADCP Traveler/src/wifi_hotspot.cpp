@@ -3,115 +3,30 @@
 #include <SPIFFS.h>
 #include <WebServer.h>
 #include <WiFi.h>
-#include <esp_wifi.h>
 
 #include "config.h"
+#include "wifi_signal_reporter.h"
 
 namespace {
 WebServer server(80);
 WifiHotspot* activeHotspot = nullptr;
-
-void printBrightnessDebug(const char* source, bool ledOn, uint8_t pwm) {
-  const int brightnessPercent = (static_cast<int>(pwm) * 100 + 127) / 255;
-  Serial.printf("[LED] %-9s | State: %-3s | Brightness: %3d%% | PWM: %3u\n",
-                source, ledOn ? "ON" : "OFF", brightnessPercent, pwm);
-}
 }  // namespace
 
-WifiHotspot::WifiHotspot()
-    : onboardLedPin_(2), ledOn_(false), currentPwm_(0), lastPwm_(255) {}
+WifiHotspot::WifiHotspot() : onboardLedPin_(2), ledController_() {}
 
-void WifiHotspot::setLed(bool on) {
-  ledOn_ = on;
-  if (on) {
-    // Turn on: restore to last brightness
-    // If lastPwm is too small (ghost brightness), default to 128 (50%
-    // perceptual)
-    currentPwm_ = (lastPwm_ > 10) ? lastPwm_ : 128;
-    ledcWrite(0, currentPwm_);
-  } else {
-    // Turn off: save current brightness, then turn off
-    if (currentPwm_ > 10) {  // Only remember if brightness is significant
-      lastPwm_ = currentPwm_;
-    }
-    currentPwm_ = 0;
-    ledcWrite(0, 0);
-  }
+void WifiHotspot::setLed(bool on) { ledController_.setLed(on); }
 
-  printBrightnessDebug("setLed", ledOn_, currentPwm_);
-}
-
-void WifiHotspot::setPwm(uint8_t value) {
-  currentPwm_ = value;
-  ledOn_ = (value > 0);
-  // Only remember significant brightness levels (> 10 to avoid ghost values)
-  if (value > 10) {
-    lastPwm_ = value;
-  } else if (value == 0) {
-    // Explicitly turning off resets to default
-    lastPwm_ = 128;  // Default to 50% next time
-  }
-  ledcWrite(0, value);
-
-  printBrightnessDebug("setPwm", ledOn_, currentPwm_);
-}
+void WifiHotspot::setPwm(uint8_t value) { ledController_.setPwm(value); }
 
 void WifiHotspot::sendLedStateResponse() {
-  const String state = ledOn_ ? "on" : "off";
-  String response =
-      "{\"state\":\"" + state + "\",\"pwm\":" + String(currentPwm_) + "}";
+  const String state = ledController_.isOn() ? "on" : "off";
+  String response = "{\"state\":\"" + state +
+                    "\",\"pwm\":" + String(ledController_.currentPwm()) + "}";
   server.send(200, "application/json", response);
 }
 
 void WifiHotspot::sendWifiSignalResponse() {
-  wifi_sta_list_t stationList;
-  memset(&stationList, 0, sizeof(stationList));
-
-  esp_err_t result = esp_wifi_ap_get_sta_list(&stationList);
-  if (result != ESP_OK) {
-    server.send(500, "application/json",
-                "{\"connected\":false,\"rssi\":null,\"quality\":0,"
-                "\"label\":\"unavailable\"}");
-    return;
-  }
-
-  if (stationList.num == 0) {
-    server.send(200, "application/json",
-                "{\"connected\":false,\"rssi\":null,\"quality\":0,"
-                "\"label\":\"no device\"}");
-    return;
-  }
-
-  const int rssi = stationList.sta[0].rssi;
-  int quality = 0;
-
-  if (rssi >= -55) {
-    quality = 4;
-  } else if (rssi >= -67) {
-    quality = 3;
-  } else if (rssi >= -75) {
-    quality = 2;
-  } else if (rssi >= -85) {
-    quality = 1;
-  }
-
-  String label = "weak";
-  if (quality >= 4) {
-    label = "excellent";
-  } else if (quality == 3) {
-    label = "good";
-  } else if (quality == 2) {
-    label = "fair";
-  }
-
-  String response = "{\"connected\":true,\"rssi\":";
-  response += String(rssi);
-  response += ",\"quality\":";
-  response += String(quality);
-  response += ",\"label\":\"";
-  response += label;
-  response += "\"}";
-  server.send(200, "application/json", response);
+  WifiSignalReporter::sendResponse(server);
 }
 
 bool WifiHotspot::serveFile(const char* path, const char* contentType) {
@@ -126,13 +41,6 @@ bool WifiHotspot::serveFile(const char* path, const char* contentType) {
   file.close();
   return true;
 }
-
-namespace {
-void redirectToRoot() {
-  server.sendHeader("Location", "http://192.168.4.1/", true);
-  server.send(302, "text/plain", "");
-}
-}  // namespace
 
 void WifiHotspot::handleRoot() {
   if (serveFile("/index.html", "text/html")) {
@@ -196,25 +104,6 @@ void WifiHotspot::handleLedPwm() {
 }
 
 void WifiHotspot::handleNotFound() {
-  const String uri = server.uri();
-
-  if (server.method() == HTTP_GET &&
-      (uri == "/generate_204" || uri == "/hotspot-detect.html" ||
-       uri == "/connecttest.txt" || uri == "/ncsi.txt" || uri == "/fwlink")) {
-    redirectToRoot();
-    return;
-  }
-
-  if (server.method() == HTTP_GET && uri.startsWith("/led/pwm/")) {
-    handleLedPwm();
-    return;
-  }
-
-  if (server.method() == HTTP_GET && uri.indexOf('.') == -1) {
-    handleRoot();
-    return;
-  }
-
   server.send(404, "text/plain", "Not found\n");
 }
 
@@ -222,13 +111,7 @@ void WifiHotspot::begin(uint8_t ledPin) {
   onboardLedPin_ = ledPin;
   activeHotspot = this;
 
-  pinMode(onboardLedPin_, OUTPUT);
-
-  // Configure LEDC PWM for the LED
-  ledcSetup(0, 5000, 8);  // Channel 0, 5kHz frequency, 8-bit resolution (0-255)
-  ledcAttachPin(onboardLedPin_, 0);
-
-  setLed(false);
+  ledController_.begin(onboardLedPin_);
 
   WiFi.mode(WIFI_AP);
 
@@ -256,11 +139,6 @@ void WifiHotspot::begin(uint8_t ledPin) {
   server.on("/script.js", HTTP_GET, []() {
     activeHotspot->serveFile("/script.js", "application/javascript");
   });
-  server.on("/generate_204", HTTP_GET, []() { redirectToRoot(); });
-  server.on("/hotspot-detect.html", HTTP_GET, []() { redirectToRoot(); });
-  server.on("/connecttest.txt", HTTP_GET, []() { redirectToRoot(); });
-  server.on("/ncsi.txt", HTTP_GET, []() { redirectToRoot(); });
-  server.on("/fwlink", HTTP_GET, []() { redirectToRoot(); });
   server.on("/led/on", []() { activeHotspot->handleLedOn(); });
   server.on("/led/off", []() { activeHotspot->handleLedOff(); });
   server.on("/led/status", []() { activeHotspot->handleLedStatus(); });
@@ -273,4 +151,4 @@ void WifiHotspot::begin(uint8_t ledPin) {
 
 void WifiHotspot::update() { server.handleClient(); }
 
-bool WifiHotspot::isLedOn() const { return ledOn_; }
+bool WifiHotspot::isLedOn() const { return ledController_.isOn(); }
