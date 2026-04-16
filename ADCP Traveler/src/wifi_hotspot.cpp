@@ -1,26 +1,41 @@
 #include "wifi_hotspot.h"
-#include "config.h"
 
 #include <SPIFFS.h>
 #include <WebServer.h>
 #include <WiFi.h>
 #include <esp_wifi.h>
 
+#include "config.h"
+
 namespace {
 WebServer server(80);
-WifiHotspot *activeHotspot = nullptr;
+WifiHotspot* activeHotspot = nullptr;
 }  // namespace
 
-WifiHotspot::WifiHotspot() : onboardLedPin_(2), ledOn_(false) {}
+WifiHotspot::WifiHotspot() : onboardLedPin_(2), ledOn_(false), currentPwm_(0) {}
 
 void WifiHotspot::setLed(bool on) {
   ledOn_ = on;
-  digitalWrite(onboardLedPin_, on ? HIGH : LOW);
+  if (on) {
+    currentPwm_ = 255;
+    ledcWrite(0, 255);
+  } else {
+    currentPwm_ = 0;
+    ledcWrite(0, 0);
+  }
+}
+
+void WifiHotspot::setPwm(uint8_t value) {
+  currentPwm_ = value;
+  ledOn_ = (value > 0);
+  ledcWrite(0, value);
 }
 
 void WifiHotspot::sendLedStateResponse() {
   const String state = ledOn_ ? "on" : "off";
-  server.send(200, "application/json", "{\"state\":\"" + state + "\"}");
+  String response =
+      "{\"state\":\"" + state + "\",\"pwm\":" + String(currentPwm_) + "}";
+  server.send(200, "application/json", response);
 }
 
 void WifiHotspot::sendWifiSignalResponse() {
@@ -29,16 +44,14 @@ void WifiHotspot::sendWifiSignalResponse() {
 
   esp_err_t result = esp_wifi_ap_get_sta_list(&stationList);
   if (result != ESP_OK) {
-    server.send(500,
-                "application/json",
+    server.send(500, "application/json",
                 "{\"connected\":false,\"rssi\":null,\"quality\":0,"
                 "\"label\":\"unavailable\"}");
     return;
   }
 
   if (stationList.num == 0) {
-    server.send(200,
-                "application/json",
+    server.send(200, "application/json",
                 "{\"connected\":false,\"rssi\":null,\"quality\":0,"
                 "\"label\":\"no device\"}");
     return;
@@ -76,7 +89,7 @@ void WifiHotspot::sendWifiSignalResponse() {
   server.send(200, "application/json", response);
 }
 
-bool WifiHotspot::serveFile(const char *path, const char *contentType) {
+bool WifiHotspot::serveFile(const char* path, const char* contentType) {
   File file = SPIFFS.open(path, FILE_READ);
   if (!file) {
     Serial.print("Missing SPIFFS file: ");
@@ -103,13 +116,22 @@ void WifiHotspot::handleRoot() {
 
   String response;
   response += "<!DOCTYPE html><html><head><meta charset='UTF-8'>";
-  response += "<meta name='viewport' content='width=device-width, initial-scale=1.0'>";
-  response += "<title>ESP32 Control</title></head><body style='font-family:Arial,sans-serif;";
+  response +=
+      "<meta name='viewport' content='width=device-width, initial-scale=1.0'>";
+  response +=
+      "<title>ESP32 Control</title></head><body "
+      "style='font-family:Arial,sans-serif;";
   response += "padding:24px;line-height:1.6;'>";
   response += "<h1>ESP32 control page not found</h1>";
-  response += "<p>The ESP32 web server is running, but <code>index.html</code> was not found in SPIFFS.</p>";
-  response += "<p>Upload the filesystem image from PlatformIO, then refresh <code>http://192.168.4.1/</code>.</p>";
-  response += "<p>Available API routes: <code>/led/on</code>, <code>/led/off</code>, <code>/led/status</code>.</p>";
+  response +=
+      "<p>The ESP32 web server is running, but <code>index.html</code> was not "
+      "found in SPIFFS.</p>";
+  response +=
+      "<p>Upload the filesystem image from PlatformIO, then refresh "
+      "<code>http://192.168.4.1/</code>.</p>";
+  response +=
+      "<p>Available API routes: <code>/led/on</code>, <code>/led/off</code>, "
+      "<code>/led/status</code>.</p>";
   response += "</body></html>";
   server.send(200, "text/html", response);
 }
@@ -124,12 +146,28 @@ void WifiHotspot::handleLedOff() {
   sendLedStateResponse();
 }
 
-void WifiHotspot::handleLedStatus() {
-  sendLedStateResponse();
-}
+void WifiHotspot::handleLedStatus() { sendLedStateResponse(); }
 
-void WifiHotspot::handleWifiSignal() {
-  sendWifiSignalResponse();
+void WifiHotspot::handleWifiSignal() { sendWifiSignalResponse(); }
+
+void WifiHotspot::handleLedPwm() {
+  const String uri = server.uri();
+  int slashIndex = uri.lastIndexOf('/');
+  if (slashIndex == -1) {
+    server.send(400, "application/json", "{\"error\":\"Invalid request\"}");
+    return;
+  }
+
+  String valueStr = uri.substring(slashIndex + 1);
+  int pwmValue = valueStr.toInt();
+
+  if (pwmValue < 0 || pwmValue > 255) {
+    server.send(400, "application/json", "{\"error\":\"PWM must be 0-255\"}");
+    return;
+  }
+
+  setPwm((uint8_t)pwmValue);
+  sendLedStateResponse();
 }
 
 void WifiHotspot::handleNotFound() {
@@ -139,6 +177,11 @@ void WifiHotspot::handleNotFound() {
       (uri == "/generate_204" || uri == "/hotspot-detect.html" ||
        uri == "/connecttest.txt" || uri == "/ncsi.txt" || uri == "/fwlink")) {
     redirectToRoot();
+    return;
+  }
+
+  if (server.method() == HTTP_GET && uri.startsWith("/led/pwm/")) {
+    handleLedPwm();
     return;
   }
 
@@ -155,6 +198,11 @@ void WifiHotspot::begin(uint8_t ledPin) {
   activeHotspot = this;
 
   pinMode(onboardLedPin_, OUTPUT);
+
+  // Configure LEDC PWM for the LED
+  ledcSetup(0, 5000, 8);  // Channel 0, 5kHz frequency, 8-bit resolution (0-255)
+  ledcAttachPin(onboardLedPin_, 0);
+
   setLed(false);
 
   WiFi.mode(WIFI_AP);
@@ -178,12 +226,11 @@ void WifiHotspot::begin(uint8_t ledPin) {
 
   server.on("/", []() { activeHotspot->handleRoot(); });
   server.on("/index.html", []() { activeHotspot->handleRoot(); });
-  server.on("/style.css",
-            HTTP_GET,
+  server.on("/style.css", HTTP_GET,
             []() { activeHotspot->serveFile("/style.css", "text/css"); });
-  server.on("/script.js",
-            HTTP_GET,
-            []() { activeHotspot->serveFile("/script.js", "application/javascript"); });
+  server.on("/script.js", HTTP_GET, []() {
+    activeHotspot->serveFile("/script.js", "application/javascript");
+  });
   server.on("/generate_204", HTTP_GET, []() { redirectToRoot(); });
   server.on("/hotspot-detect.html", HTTP_GET, []() { redirectToRoot(); });
   server.on("/connecttest.txt", HTTP_GET, []() { redirectToRoot(); });
@@ -199,10 +246,6 @@ void WifiHotspot::begin(uint8_t ledPin) {
   Serial.println("HTTP server started");
 }
 
-void WifiHotspot::update() {
-  server.handleClient();
-}
+void WifiHotspot::update() { server.handleClient(); }
 
-bool WifiHotspot::isLedOn() const {
-  return ledOn_;
-}
+bool WifiHotspot::isLedOn() const { return ledOn_; }

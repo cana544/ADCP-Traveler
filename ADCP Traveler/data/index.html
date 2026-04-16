@@ -39,6 +39,23 @@
           </div>
         </div>
 
+        <div class="brightness-control">
+          <div class="brightness-header">
+            <span class="brightness-icon" aria-hidden="true">💡</span>
+            <span class="brightness-label">Brightness</span>
+            <span id="brightness-value" class="brightness-percentage">0%</span>
+          </div>
+          <input
+            id="brightness-slider"
+            type="range"
+            min="0"
+            max="255"
+            value="0"
+            class="brightness-slider"
+            aria-label="Brightness level"
+          />
+        </div>
+
         <div class="button-row">
           <button id="led-on" class="action-button action-on" type="button">
             LED ON
