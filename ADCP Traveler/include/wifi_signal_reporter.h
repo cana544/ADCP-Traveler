@@ -1,10 +1,10 @@
 #ifndef WIFI_SIGNAL_REPORTER_H
 #define WIFI_SIGNAL_REPORTER_H
 
-#include <WebServer.h>
+#include <ESPAsyncWebServer.h>
 
 namespace WifiSignalReporter {
-void sendResponse(WebServer& server);
+void sendResponse(AsyncWebServerRequest* request);
 }
 
 #endif

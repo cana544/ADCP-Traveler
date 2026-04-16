@@ -10,12 +10,12 @@ const buttons = Array.from(document.querySelectorAll(".action-button"));
 let currentPwm = 0;
 let isUserDragging = false;
 let isLedOn = false;
+let ws = null;
 
 function setButtonsDisabled(disabled) {
   buttons.forEach((button) => {
     button.disabled = disabled;
   });
-  brightnessSlider.disabled = disabled;
 }
 
 function updateBrightnessDisplay(displayValue) {
@@ -72,87 +72,71 @@ function updateWifiSignal(data) {
   wifiSignalElement.classList.add("status-on");
 }
 
-async function sendPwmCommand(pwmValue) {
-  // Fire-and-forget: send PWM update without waiting for response
-  // This keeps the slider UI responsive
-  fetch(`/led/pwm/${pwmValue}`, {
-    method: "GET",
-    keepalive: true,  // Reuse connection for faster requests
-  }).catch(() => {
-    // Silently fail - user will see in next status refresh
-  });
-}
+// WebSocket connection
+function connectWebSocket() {
+  ws = new WebSocket('ws://192.168.4.1/ws');
 
-async function sendPwmCommandWithFeedback(pwmValue) {
-  // For buttons: wait for response and show feedback
-  try {
-    const response = await fetch(`/led/pwm/${pwmValue}`, {
-      method: "GET",
-      keepalive: true,
-    });
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const data = await response.json();
-    updateState(data.state, data.pwm);
-    messageElement.textContent = "Brightness updated.";
-  } catch (error) {
-    messageElement.textContent =
-      "Could not reach the ESP32. Check that you are connected to its Wi-Fi.";
-  }
-}
-
-async function sendLedCommand(path, pendingText) {
-  setButtonsDisabled(true);
-  messageElement.textContent = pendingText;
-
-  try {
-    const response = await fetch(path, { keepalive: true });
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const data = await response.json();
-    updateState(data.state, data.pwm);
-    messageElement.textContent =
-      path === "/led/on"
-        ? "LED turned ON (restored brightness)."
-        : "LED turned OFF.";
-  } catch (error) {
-    messageElement.textContent =
-      "Could not reach the ESP32. Check that you are connected to its Wi-Fi.";
-  } finally {
+  ws.onopen = () => {
+    console.log('WebSocket connected');
+    messageElement.textContent = 'Connected to ESP32 via WebSocket';
     setButtonsDisabled(false);
-  }
-}
+    
+    // Request initial status
+    ws.send(JSON.stringify({ cmd: 'status' }));
+  };
 
-async function refreshStatus() {
-  try {
-    const [ledResponse, wifiResponse] = await Promise.all([
-      fetch("/led/status", { keepalive: true }),
-      fetch("/wifi/signal", { keepalive: true }),
-    ]);
+  ws.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      console.log('Received:', data);
 
-    if (!ledResponse.ok || !wifiResponse.ok) {
-      throw new Error(`HTTP ${ledResponse.status}/${wifiResponse.status}`);
+      if (data.state !== undefined && data.pwm !== undefined) {
+        updateState(data.state, data.pwm);
+      }
+    } catch (error) {
+      console.error('Failed to parse message:', error);
     }
+  };
 
-    const ledData = await ledResponse.json();
-    const wifiData = await wifiResponse.json();
-    updateState(ledData.state, ledData.pwm || 0);
-    updateWifiSignal(wifiData);
-    messageElement.textContent = "Connected to ESP32 control page.";
-  } catch (error) {
-    wifiBarsElement.dataset.quality = "0";
-    wifiSignalElement.textContent = "Unavailable";
-    wifiSignalElement.classList.remove("status-on");
-    wifiSignalElement.classList.add("status-off");
-    messageElement.textContent =
-      "Waiting for the ESP32 to respond. Reload if needed.";
+  ws.onerror = (error) => {
+    console.error('WebSocket error:', error);
+    messageElement.textContent = 'WebSocket connection error';
+  };
+
+  ws.onclose = () => {
+    console.log('WebSocket disconnected');
+    messageElement.textContent = 'Disconnected from ESP32. Reconnecting...';
+    setButtonsDisabled(true);
+    
+    // Try to reconnect after 3 seconds
+    setTimeout(connectWebSocket, 3000);
+  };
+}
+
+function sendWebSocketCommand(cmd) {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(cmd));
+  } else {
+    messageElement.textContent = 'WebSocket not connected';
   }
 }
 
+function sendPwmValue(pwmValue) {
+  sendWebSocketCommand({ cmd: 'pwm', value: pwmValue });
+}
+
+function sendOnCommand() {
+  setButtonsDisabled(true);
+  messageElement.textContent = 'Turning LED ON...';
+  sendWebSocketCommand({ cmd: 'on' });
+  setTimeout(() => { setButtonsDisabled(false); }, 500);
+}
+
+function sendOffCommand() {
+  setButtonsDisabled(true);
+  messageElement.textContent = 'Turning LED OFF...';
+  sendWebSocketCommand({ cmd: 'off' });
+  setTimeout(() => { setButtonsDisabled(false); }, 500);}
 brightnessSlider.addEventListener("mousedown", () => {
   isUserDragging = true;
 });
@@ -170,39 +154,37 @@ brightnessSlider.addEventListener("touchend", () => {
 });
 
 brightnessSlider.addEventListener("input", (event) => {
-  // Only allow slider changes when LED is on
+  // Only send commands when LED is on
   if (!isLedOn) {
     return;
   }
-  
+
   const sliderValue = parseInt(event.target.value, 10);
-  const pwmValue = sliderValue;  // Linear mapping: slider value = PWM value
-  
   updateBrightnessDisplay(sliderValue);
   messageElement.textContent = "Adjusting brightness...";
   
-  sendPwmCommand(pwmValue);
+  // Send immediate PWM update via WebSocket
+  sendPwmValue(sliderValue);
 });
 
 brightnessSlider.addEventListener("change", (event) => {
-  // Only allow slider changes when LED is on
+  // Only send commands when LED is on
   if (!isLedOn) {
     return;
   }
-  
-  // Ensure final value is sent
+
   const sliderValue = parseInt(event.target.value, 10);
-  const pwmValue = sliderValue;  // Linear mapping: slider value = PWM value
-  
-  sendPwmCommand(pwmValue);
+  sendPwmValue(sliderValue);
 });
 
+// Button event listeners
 document
   .getElementById("led-on")
-  .addEventListener("click", () => sendLedCommand("/led/on", "Sending LED ON command..."));
+  .addEventListener("click", sendOnCommand);
+
 document
   .getElementById("led-off")
-  .addEventListener("click", () => sendLedCommand("/led/off", "Sending LED OFF command..."));
+  .addEventListener("click", sendOffCommand);
 
-refreshStatus();
-setInterval(refreshStatus, 5000);
+// Initialize WebSocket on page load
+connectWebSocket();
