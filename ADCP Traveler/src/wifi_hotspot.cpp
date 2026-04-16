@@ -10,6 +10,12 @@
 namespace {
 WebServer server(80);
 WifiHotspot* activeHotspot = nullptr;
+
+void printBrightnessDebug(const char* source, bool ledOn, uint8_t pwm) {
+  const int brightnessPercent = (static_cast<int>(pwm) * 100 + 127) / 255;
+  Serial.printf("[LED] %-9s | State: %-3s | Brightness: %3d%% | PWM: %3u\n",
+                source, ledOn ? "ON" : "OFF", brightnessPercent, pwm);
+}
 }  // namespace
 
 WifiHotspot::WifiHotspot()
@@ -19,25 +25,35 @@ void WifiHotspot::setLed(bool on) {
   ledOn_ = on;
   if (on) {
     // Turn on: restore to last brightness
-    currentPwm_ = lastPwm_;
-    ledcWrite(0, lastPwm_);
+    // If lastPwm is too small (ghost brightness), default to 128 (50%
+    // perceptual)
+    currentPwm_ = (lastPwm_ > 10) ? lastPwm_ : 128;
+    ledcWrite(0, currentPwm_);
   } else {
     // Turn off: save current brightness, then turn off
-    if (currentPwm_ > 0) {
+    if (currentPwm_ > 10) {  // Only remember if brightness is significant
       lastPwm_ = currentPwm_;
     }
     currentPwm_ = 0;
     ledcWrite(0, 0);
   }
+
+  printBrightnessDebug("setLed", ledOn_, currentPwm_);
 }
 
 void WifiHotspot::setPwm(uint8_t value) {
   currentPwm_ = value;
   ledOn_ = (value > 0);
-  if (value > 0) {
-    lastPwm_ = value;  // Remember this brightness for next on
+  // Only remember significant brightness levels (> 10 to avoid ghost values)
+  if (value > 10) {
+    lastPwm_ = value;
+  } else if (value == 0) {
+    // Explicitly turning off resets to default
+    lastPwm_ = 128;  // Default to 50% next time
   }
   ledcWrite(0, value);
+
+  printBrightnessDebug("setPwm", ledOn_, currentPwm_);
 }
 
 void WifiHotspot::sendLedStateResponse() {

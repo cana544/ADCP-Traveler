@@ -9,8 +9,6 @@ const buttons = Array.from(document.querySelectorAll(".action-button"));
 
 let currentPwm = 0;
 let isUserDragging = false;
-let pendingPwmTimeout = null;
-const PWM_THROTTLE_MS = 100;  // Send PWM updates every 100ms while dragging
 
 function setButtonsDisabled(disabled) {
   buttons.forEach((button) => {
@@ -19,22 +17,37 @@ function setButtonsDisabled(disabled) {
   brightnessSlider.disabled = disabled;
 }
 
-function updateBrightnessDisplay(pwm) {
-  currentPwm = pwm;
-  const percentage = Math.round((pwm / 255) * 100);
+function updateBrightnessDisplay(displayValue) {
+  // displayValue is the slider position (0-255), not necessarily the actual PWM
+  currentPwm = displayValue;
+  const percentage = Math.round((displayValue / 255) * 100);
   brightnessValue.textContent = `${percentage}%`;
   if (!isUserDragging) {
-    brightnessSlider.value = pwm;
+    brightnessSlider.value = displayValue;
   }
 
   let glowIntensity = 0;
-  if (pwm <= 0) glowIntensity = 0;
-  else if (pwm <= 64) glowIntensity = 1;
-  else if (pwm <= 127) glowIntensity = 2;
-  else if (pwm <= 191) glowIntensity = 3;
+  if (displayValue <= 0) glowIntensity = 0;
+  else if (displayValue <= 64) glowIntensity = 1;
+  else if (displayValue <= 127) glowIntensity = 2;
+  else if (displayValue <= 191) glowIntensity = 3;
   else glowIntensity = 4;
 
   brightnessControl.dataset.brightness = glowIntensity;
+}
+
+function updateStateFromPwm(pwm) {
+  // Convert PWM back to slider position using reverse gamma correction
+  // Dead zone: PWM 0-10 maps to slider 0 (prevents ghost brightness)
+  let sliderValue = 0;
+  
+  if (pwm > 10) {
+    const gamma = 2.2;
+    const normalizedPwm = pwm / 255;
+    sliderValue = Math.round(Math.pow(normalizedPwm, 1 / gamma) * 255);
+  }
+  
+  updateBrightnessDisplay(sliderValue);
 }
 
 function updateState(state, pwm) {
@@ -44,7 +57,7 @@ function updateState(state, pwm) {
   stateElement.classList.toggle("status-off", !isOn);
 
   if (Number.isFinite(pwm)) {
-    updateBrightnessDisplay(pwm);
+    updateStateFromPwm(pwm);
   }
 }
 
@@ -65,8 +78,23 @@ function updateWifiSignal(data) {
 }
 
 async function sendPwmCommand(pwmValue) {
+  // Fire-and-forget: send PWM update without waiting for response
+  // This keeps the slider UI responsive
+  fetch(`/led/pwm/${pwmValue}`, {
+    method: "GET",
+    keepalive: true,  // Reuse connection for faster requests
+  }).catch(() => {
+    // Silently fail - user will see in next status refresh
+  });
+}
+
+async function sendPwmCommandWithFeedback(pwmValue) {
+  // For buttons: wait for response and show feedback
   try {
-    const response = await fetch(`/led/pwm/${pwmValue}`);
+    const response = await fetch(`/led/pwm/${pwmValue}`, {
+      method: "GET",
+      keepalive: true,
+    });
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
@@ -85,7 +113,7 @@ async function sendLedCommand(path, pendingText) {
   messageElement.textContent = pendingText;
 
   try {
-    const response = await fetch(path);
+    const response = await fetch(path, { keepalive: true });
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
@@ -107,8 +135,8 @@ async function sendLedCommand(path, pendingText) {
 async function refreshStatus() {
   try {
     const [ledResponse, wifiResponse] = await Promise.all([
-      fetch("/led/status"),
-      fetch("/wifi/signal"),
+      fetch("/led/status", { keepalive: true }),
+      fetch("/wifi/signal", { keepalive: true }),
     ]);
 
     if (!ledResponse.ok || !wifiResponse.ok) {
@@ -140,53 +168,46 @@ brightnessSlider.addEventListener("touchstart", () => {
 
 brightnessSlider.addEventListener("mouseup", () => {
   isUserDragging = false;
-  // Send final PWM value when done dragging
-  if (pendingPwmTimeout) {
-    clearTimeout(pendingPwmTimeout);
-    pendingPwmTimeout = null;
-  }
-  const pwmValue = parseInt(brightnessSlider.value, 10);
-  sendPwmCommand(pwmValue);
 });
 
 brightnessSlider.addEventListener("touchend", () => {
   isUserDragging = false;
-  // Send final PWM value when done dragging
-  if (pendingPwmTimeout) {
-    clearTimeout(pendingPwmTimeout);
-    pendingPwmTimeout = null;
-  }
-  const pwmValue = parseInt(brightnessSlider.value, 10);
-  sendPwmCommand(pwmValue);
 });
 
 brightnessSlider.addEventListener("input", (event) => {
-  const pwmValue = parseInt(event.target.value, 10);
-  updateBrightnessDisplay(pwmValue);
-  messageElement.textContent = "Adjusting brightness...";
-
-  // Throttle PWM commands while dragging
-  if (pendingPwmTimeout) {
-    clearTimeout(pendingPwmTimeout);
+  const sliderValue = parseInt(event.target.value, 10);
+  
+  // Dead zone: 0-2% slider maps to PWM 0
+  let pwmValue = 0;
+  if (sliderValue > 5) {
+    // Apply gamma correction for perceptually accurate brightness
+    // Gamma of 2.2 matches typical display brightness perception
+    const gamma = 2.2;
+    const normalizedValue = sliderValue / 255;
+    const gammaAdjusted = Math.pow(normalizedValue, gamma);
+    pwmValue = Math.round(gammaAdjusted * 255);
   }
-
-  pendingPwmTimeout = setTimeout(() => {
-    sendPwmCommand(pwmValue);
-    pendingPwmTimeout = null;
-  }, PWM_THROTTLE_MS);
+  
+  updateBrightnessDisplay(sliderValue);  // Display uses slider position, not PWM
+  messageElement.textContent = "Adjusting brightness...";
+  
+  // Send gamma-corrected PWM command
+  sendPwmCommand(pwmValue);
 });
 
 brightnessSlider.addEventListener("change", (event) => {
-  // Change event fires on drag end on some browsers
   // Ensure final value is sent
-  if (!isUserDragging) {
-    const pwmValue = parseInt(event.target.value, 10);
-    if (pendingPwmTimeout) {
-      clearTimeout(pendingPwmTimeout);
-      pendingPwmTimeout = null;
-    }
-    sendPwmCommand(pwmValue);
+  const sliderValue = parseInt(event.target.value, 10);
+  
+  let pwmValue = 0;
+  if (sliderValue > 5) {
+    const gamma = 2.2;
+    const normalizedValue = sliderValue / 255;
+    const gammaAdjusted = Math.pow(normalizedValue, gamma);
+    pwmValue = Math.round(gammaAdjusted * 255);
   }
+  
+  sendPwmCommand(pwmValue);
 });
 
 document
