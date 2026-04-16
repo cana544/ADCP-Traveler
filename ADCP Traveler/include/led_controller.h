@@ -21,7 +21,6 @@ class LedController {
   uint8_t resolutionBits_;
   bool ledOn_;
   uint8_t currentPwm_;
-  uint8_t lastPwm_;
 
   void logState(const char* source) const;
 };

@@ -9,6 +9,7 @@ const buttons = Array.from(document.querySelectorAll(".action-button"));
 
 let currentPwm = 0;
 let isUserDragging = false;
+let isLedOn = false;
 
 function setButtonsDisabled(disabled) {
   buttons.forEach((button) => {
@@ -37,26 +38,20 @@ function updateBrightnessDisplay(displayValue) {
 }
 
 function updateStateFromPwm(pwm) {
-  // Convert PWM back to slider position using reverse gamma correction
-  // Dead zone: PWM 0-10 maps to slider 0 (prevents ghost brightness)
-  let sliderValue = 0;
-  
-  if (pwm > 10) {
-    const gamma = 2.2;
-    const normalizedPwm = pwm / 255;
-    sliderValue = Math.round(Math.pow(normalizedPwm, 1 / gamma) * 255);
-  }
-  
-  updateBrightnessDisplay(sliderValue);
+  // Linear mapping: PWM 0-255 maps directly to slider 0-255
+  updateBrightnessDisplay(pwm);
 }
 
 function updateState(state, pwm) {
-  const isOn = state === "on";
-  stateElement.textContent = isOn ? "ON" : "OFF";
-  stateElement.classList.toggle("status-on", isOn);
-  stateElement.classList.toggle("status-off", !isOn);
+  isLedOn = state === "on";
+  stateElement.textContent = isLedOn ? "ON" : "OFF";
+  stateElement.classList.toggle("status-on", isLedOn);
+  stateElement.classList.toggle("status-off", !isLedOn);
 
-  if (Number.isFinite(pwm)) {
+  // When LED is OFF, always display 0% brightness
+  if (!isLedOn) {
+    updateBrightnessDisplay(0);
+  } else if (Number.isFinite(pwm)) {
     updateStateFromPwm(pwm);
   }
 }
@@ -175,37 +170,29 @@ brightnessSlider.addEventListener("touchend", () => {
 });
 
 brightnessSlider.addEventListener("input", (event) => {
-  const sliderValue = parseInt(event.target.value, 10);
-  
-  // Dead zone: 0-2% slider maps to PWM 0
-  let pwmValue = 0;
-  if (sliderValue > 5) {
-    // Apply gamma correction for perceptually accurate brightness
-    // Gamma of 2.2 matches typical display brightness perception
-    const gamma = 2.2;
-    const normalizedValue = sliderValue / 255;
-    const gammaAdjusted = Math.pow(normalizedValue, gamma);
-    pwmValue = Math.round(gammaAdjusted * 255);
+  // Only allow slider changes when LED is on
+  if (!isLedOn) {
+    return;
   }
   
-  updateBrightnessDisplay(sliderValue);  // Display uses slider position, not PWM
+  const sliderValue = parseInt(event.target.value, 10);
+  const pwmValue = sliderValue;  // Linear mapping: slider value = PWM value
+  
+  updateBrightnessDisplay(sliderValue);
   messageElement.textContent = "Adjusting brightness...";
   
-  // Send gamma-corrected PWM command
   sendPwmCommand(pwmValue);
 });
 
 brightnessSlider.addEventListener("change", (event) => {
+  // Only allow slider changes when LED is on
+  if (!isLedOn) {
+    return;
+  }
+  
   // Ensure final value is sent
   const sliderValue = parseInt(event.target.value, 10);
-  
-  let pwmValue = 0;
-  if (sliderValue > 5) {
-    const gamma = 2.2;
-    const normalizedValue = sliderValue / 255;
-    const gammaAdjusted = Math.pow(normalizedValue, gamma);
-    pwmValue = Math.round(gammaAdjusted * 255);
-  }
+  const pwmValue = sliderValue;  // Linear mapping: slider value = PWM value
   
   sendPwmCommand(pwmValue);
 });

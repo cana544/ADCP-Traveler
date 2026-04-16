@@ -104,6 +104,13 @@ void WifiHotspot::handleLedPwm() {
 }
 
 void WifiHotspot::handleNotFound() {
+  const String uri = server.uri();
+
+  if (server.method() == HTTP_GET && uri.startsWith("/led/pwm/")) {
+    handleLedPwm();
+    return;
+  }
+
   server.send(404, "text/plain", "Not found\n");
 }
 

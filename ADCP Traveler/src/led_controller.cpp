@@ -7,8 +7,7 @@ LedController::LedController(uint8_t pwmChannel, uint32_t frequency,
       frequency_(frequency),
       resolutionBits_(resolutionBits),
       ledOn_(false),
-      currentPwm_(0),
-      lastPwm_(255) {}
+      currentPwm_(0) {}
 
 void LedController::begin(uint8_t ledPin) {
   ledPin_ = ledPin;
@@ -23,12 +22,11 @@ void LedController::begin(uint8_t ledPin) {
 void LedController::setLed(bool on) {
   ledOn_ = on;
   if (on) {
-    currentPwm_ = (lastPwm_ > 10) ? lastPwm_ : 128;
-    ledcWrite(pwmChannel_, currentPwm_);
+    // Start at 0% brightness
+    currentPwm_ = 0;
+    ledcWrite(pwmChannel_, 0);
   } else {
-    if (currentPwm_ > 10) {
-      lastPwm_ = currentPwm_;
-    }
+    // Turn off
     currentPwm_ = 0;
     ledcWrite(pwmChannel_, 0);
   }
@@ -38,15 +36,11 @@ void LedController::setLed(bool on) {
 
 void LedController::setPwm(uint8_t value) {
   currentPwm_ = value;
-  ledOn_ = (value > 0);
-
-  if (value > 10) {
-    lastPwm_ = value;
-  } else if (value == 0) {
-    lastPwm_ = 128;
+  // Only write to LED if it's actually ON
+  // This allows slider to move even when OFF, but doesn't affect LED
+  if (ledOn_) {
+    ledcWrite(pwmChannel_, value);
   }
-
-  ledcWrite(pwmChannel_, value);
   logState("setPwm");
 }
 
