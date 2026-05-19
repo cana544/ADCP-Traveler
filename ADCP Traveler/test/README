@@ -9,3 +9,7 @@ in the development cycle.
 
 More information about PlatformIO Unit Testing:
 - https://docs.platformio.org/en/latest/advanced/unit-testing/index.html
+
+Hardware sensor/electrical check sketches live in their own folders under
+`test`. Arduino IDE sketches should keep the folder name and `.ino` file name
+the same, for example `test/BNO085/BNO085.ino`.
