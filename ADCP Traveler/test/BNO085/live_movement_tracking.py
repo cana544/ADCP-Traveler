@@ -1,3 +1,4 @@
+import csv
 import serial
 import time
 import matplotlib.pyplot as plt
@@ -8,6 +9,48 @@ PORT = "COM3"      # Change this to your ESP32 port
 BAUD = 115200
 MAX_POINTS = 1000
 # ------------------------------------------------
+
+EXPECTED_COLUMNS = [
+    "Time_s",
+    "RawAccelX",
+    "RawAccelY",
+    "RawAccelZ",
+    "AccelX",
+    "AccelY",
+    "AccelZ",
+    "LinX",
+    "LinY",
+    "LinZ",
+    "VelX",
+    "VelY",
+    "VelZ",
+    "DispX",
+    "DispY",
+    "DispZ",
+    "GyroX_rad_s",
+    "GyroY_rad_s",
+    "GyroZ_rad_s",
+    "AngleX_rad",
+    "AngleY_rad",
+    "AngleZ_rad",
+]
+
+
+def parse_csv_line(line):
+    return next(csv.reader([line], skipinitialspace=True))
+
+
+def get_vector(row, prefix):
+    return (
+        float(row[f"{prefix}X"]),
+        float(row[f"{prefix}Y"]),
+        float(row[f"{prefix}Z"]),
+    )
+
+
+def get_named_vector(row, x_name, y_name, z_name):
+    return float(row[x_name]), float(row[y_name]), float(row[z_name])
+
 
 def main():
     ser = serial.Serial(PORT, BAUD, timeout=1)
@@ -20,9 +63,17 @@ def main():
     while True:
         line = ser.readline().decode(errors="ignore").strip()
         if line.startswith("Time_s"):
-            header_columns = [column.strip() for column in line.split(",")]
+            header_columns = [column.strip() for column in parse_csv_line(line)]
             print("Header found:")
             print(line)
+            if header_columns != EXPECTED_COLUMNS:
+                print("Header does not match the expected BNO085.ino output exactly.")
+                print("Expected:")
+                print(",".join(EXPECTED_COLUMNS))
+                print("Got:")
+                print(",".join(header_columns))
+                ser.close()
+                return
             break
 
     xs = deque(maxlen=MAX_POINTS)
@@ -56,7 +107,7 @@ def main():
         if raw.startswith("Time_s"):
             continue
 
-        parts = [part.strip() for part in raw.split(",")]
+        parts = [part.strip() for part in parse_csv_line(raw)]
 
         if len(parts) != len(header_columns):
             print("Bad line:", raw)
@@ -67,25 +118,25 @@ def main():
 
             t = float(row["Time_s"])
 
-            lin_x = float(row["LinX"])
-            lin_y = float(row["LinY"])
-            lin_z = float(row["LinZ"])
+            raw_accel_x, raw_accel_y, raw_accel_z = get_vector(row, "RawAccel")
+            accel_x, accel_y, accel_z = get_vector(row, "Accel")
+            lin_x, lin_y, lin_z = get_vector(row, "Lin")
 
-            vel_x = float(row["VelX"])
-            vel_y = float(row["VelY"])
-            vel_z = float(row["VelZ"])
+            vel_x, vel_y, vel_z = get_vector(row, "Vel")
+            disp_x, disp_y, disp_z = get_vector(row, "Disp")
 
-            disp_x = float(row["DispX"])
-            disp_y = float(row["DispY"])
-            disp_z = float(row["DispZ"])
-
-            gyro_x = float(row["GyroX_rad_s"])
-            gyro_y = float(row["GyroY_rad_s"])
-            gyro_z = float(row["GyroZ_rad_s"])
-
-            angle_x = float(row["AngleX_rad"])
-            angle_y = float(row["AngleY_rad"])
-            angle_z = float(row["AngleZ_rad"])
+            gyro_x, gyro_y, gyro_z = get_named_vector(
+                row,
+                "GyroX_rad_s",
+                "GyroY_rad_s",
+                "GyroZ_rad_s",
+            )
+            angle_x, angle_y, angle_z = get_named_vector(
+                row,
+                "AngleX_rad",
+                "AngleY_rad",
+                "AngleZ_rad",
+            )
 
         except (KeyError, ValueError):
             print("Parse error:", raw)
@@ -117,6 +168,8 @@ def main():
 
         print(
             f"t={t:.2f}s | "
+            f"raw_accel=({raw_accel_x:.4f}, {raw_accel_y:.4f}, {raw_accel_z:.4f}) m/s^2 | "
+            f"accel=({accel_x:.4f}, {accel_y:.4f}, {accel_z:.4f}) m/s^2 | "
             f"lin=({lin_x:.4f}, {lin_y:.4f}, {lin_z:.4f}) m/s^2 | "
             f"vel=({vel_x:.4f}, {vel_y:.4f}, {vel_z:.4f}) m/s | "
             f"disp=({disp_x:.4f}, {disp_y:.4f}, {disp_z:.4f}) m | "

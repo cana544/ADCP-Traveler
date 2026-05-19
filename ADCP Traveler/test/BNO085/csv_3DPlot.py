@@ -1,10 +1,10 @@
-"""Create a 3D movement animation from BNO085 displacement CSV data.
+"""Create a GIF and interactive 3D plot from BNO085 displacement CSV data.
 
 Run from the repo root or this folder:
-    python test/BNO085/animate_BNO085_movement.py
+    python test/BNO085/csv_3DPlot.py
 
 Or pass a different CSV:
-    python test/BNO085/animate_BNO085_movement.py test/BNO085/BNO085_data.csv
+    python test/BNO085/csv_3DPlot.py test/BNO085/BNO085_data.csv
 """
 
 from __future__ import annotations
@@ -14,9 +14,6 @@ from pathlib import Path
 import traceback
 
 import pandas as pd
-import matplotlib
-
-matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation, PillowWriter
 
@@ -62,7 +59,16 @@ def set_equal_3d_limits(ax, xs: pd.Series, ys: pd.Series, zs: pd.Series) -> None
     ax.set_zlim(mid_z - radius, mid_z + radius)
 
 
-def animate_movement(
+def setup_3d_axes(ax, csv_path: Path, xs: pd.Series, ys: pd.Series, zs: pd.Series) -> None:
+    ax.set_title(f"BNO085 movement: {csv_path.name}")
+    ax.set_xlabel("X displacement (m)")
+    ax.set_ylabel("Y displacement (m)")
+    ax.set_zlabel("Z displacement (m)")
+    set_equal_3d_limits(ax, xs, ys, zs)
+    ax.view_init(elev=24, azim=-58)
+
+
+def save_movement_gif(
     df: pd.DataFrame,
     csv_path: Path,
     output_path: Path,
@@ -78,12 +84,7 @@ def animate_movement(
 
     fig = plt.figure(figsize=(8, 7))
     ax = fig.add_subplot(111, projection="3d")
-    ax.set_title(f"BNO085 movement: {csv_path.name}")
-    ax.set_xlabel("X displacement (m)")
-    ax.set_ylabel("Y displacement (m)")
-    ax.set_zlabel("Z displacement (m)")
-    set_equal_3d_limits(ax, xs, ys, zs)
-    ax.view_init(elev=24, azim=-58)
+    setup_3d_axes(ax, csv_path, xs, ys, zs)
 
     full_path, = ax.plot(xs, ys, zs, color="0.75", linewidth=1.0, label="Full path")
     trail_line, = ax.plot([], [], [], color="#1f77b4", linewidth=2.2, label="Travelled path")
@@ -112,13 +113,34 @@ def animate_movement(
     print(f"Saved movement animation to {output_path}")
 
 
+def show_interactive_3d_plot(df: pd.DataFrame, csv_path: Path) -> None:
+    xs = df["DispX"]
+    ys = df["DispY"]
+    zs = df["DispZ"]
+
+    fig = plt.figure(figsize=(9, 7))
+    ax = fig.add_subplot(111, projection="3d")
+    setup_3d_axes(ax, csv_path, xs, ys, zs)
+
+    ax.plot(xs, ys, zs, color="#1f77b4", linewidth=2.0, label="Displacement path")
+    ax.scatter([xs.iloc[0]], [ys.iloc[0]], [zs.iloc[0]], color="#2ca02c", s=45, label="Start")
+    ax.scatter([xs.iloc[-1]], [ys.iloc[-1]], [zs.iloc[-1]], color="#d62728", s=45, label="End")
+    ax.legend(loc="upper right")
+    fig.tight_layout()
+
+    print("Opening interactive 3D plot. Rotate with left-drag, pan with right-drag, zoom with scroll.")
+    plt.show()
+
+
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Animate BNO085 displacement from CSV.")
+    parser = argparse.ArgumentParser(description="Create BNO085 movement GIF and interactive 3D plot.")
     parser.add_argument("csv_path", nargs="?", type=Path, default=DEFAULT_CSV)
-    parser.add_argument("--output", type=Path, help="GIF output path")
+    parser.add_argument("--gif-output", "--output", dest="gif_output", type=Path, help="GIF output path")
     parser.add_argument("--fps", type=int, default=20, help="Animation frames per second")
     parser.add_argument("--trail", type=int, help="Number of recent points to show; default shows all history")
     parser.add_argument("--frame-step", type=int, default=1, help="Use every Nth CSV row as an animation frame")
+    parser.add_argument("--no-gif", action="store_true", help="Open the 3D plot without saving a GIF")
+    parser.add_argument("--no-window", action="store_true", help="Save the GIF without opening the interactive plot")
     args = parser.parse_args()
 
     if args.fps <= 0:
@@ -127,14 +149,20 @@ def main() -> None:
         raise ValueError("--frame-step must be greater than 0")
 
     csv_path = args.csv_path
-    animate_movement(
-        read_displacement_csv(csv_path),
-        csv_path,
-        args.output or default_output_path(csv_path),
-        fps=args.fps,
-        trail=args.trail,
-        frame_step=args.frame_step,
-    )
+    df = read_displacement_csv(csv_path)
+
+    if not args.no_gif:
+        save_movement_gif(
+            df,
+            csv_path,
+            args.gif_output or default_output_path(csv_path),
+            fps=args.fps,
+            trail=args.trail,
+            frame_step=args.frame_step,
+        )
+
+    if not args.no_window:
+        show_interactive_3d_plot(df, csv_path)
 
 
 if __name__ == "__main__":
