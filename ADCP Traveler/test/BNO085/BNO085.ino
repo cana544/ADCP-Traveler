@@ -11,6 +11,7 @@ Adafruit_BNO08x bno08x(BNO08X_RESET);
 sh2_SensorValue_t sensorValue;
 
 const unsigned long SAMPLE_PERIOD_MS = 20;
+const uint32_t SENSOR_REPORT_INTERVAL_US = 10000;
 const unsigned long RECORD_DURATION_MS = 3600000;
 const unsigned long CALIBRATION_MS = 2000;
 const float ACCEL_FILTER_ALPHA = 0.1;
@@ -21,6 +22,40 @@ const float STILL_GYRO_THRESHOLD_RADPS = 0.02;
 const float VELOCITY_ZERO_THRESHOLD_MS = 0.002;
 const float VELOCITY_DECAY_WHEN_STILL = 0.75;
 const unsigned int STILL_SAMPLE_LIMIT = 8;
+const float GYRO_KALMAN_PROCESS_NOISE = 0.00005;
+const float GYRO_KALMAN_MEASUREMENT_NOISE = 0.0008;
+const float LIN_KALMAN_PROCESS_NOISE = 0.00012;
+const float LIN_KALMAN_MEASUREMENT_NOISE = 0.025;
+const float LIN_KALMAN_GYRO_NOISE_GAIN = 0.25;
+
+struct Kalman1D {
+  float estimate;
+  float errorCovariance;
+  bool initialized;
+
+  Kalman1D() : estimate(0), errorCovariance(1), initialized(false) {}
+
+  void reset() {
+    estimate = 0;
+    errorCovariance = 1;
+    initialized = false;
+  }
+
+  float update(float measurement, float processNoise, float measurementNoise) {
+    if (!initialized) {
+      estimate = measurement;
+      errorCovariance = measurementNoise;
+      initialized = true;
+      return estimate;
+    }
+
+    errorCovariance += processNoise;
+    float kalmanGain = errorCovariance / (errorCovariance + measurementNoise);
+    estimate += kalmanGain * (measurement - estimate);
+    errorCovariance *= (1.0 - kalmanGain);
+    return estimate;
+  }
+};
 
 float rawAccelX = 0, rawAccelY = 0, rawAccelZ = 0;
 float accelX = 0, accelY = 0, accelZ = 0;
@@ -33,6 +68,8 @@ float linBiasX = 0, linBiasY = 0, linBiasZ = 0;
 float velX = 0, velY = 0, velZ = 0;
 float dispX = 0, dispY = 0, dispZ = 0;
 float prevLinX = 0, prevLinY = 0, prevLinZ = 0;
+Kalman1D gyroKalmanX, gyroKalmanY, gyroKalmanZ;
+Kalman1D linKalmanX, linKalmanY, linKalmanZ;
 
 unsigned long calibrationStartMs = 0;
 unsigned long recordStartMs = 0;
@@ -101,15 +138,21 @@ void startRecording() {
   recordStartMs = millis();
   lastSampleMs = recordStartMs;
   recordingStarted = true;
+  gyroKalmanX.reset();
+  gyroKalmanY.reset();
+  gyroKalmanZ.reset();
+  linKalmanX.reset();
+  linKalmanY.reset();
+  linKalmanZ.reset();
 
   // CSV header. Copy all serial output into BNO085_data.csv.
   Serial.println("Time_s,RawAccelX,RawAccelY,RawAccelZ,AccelX,AccelY,AccelZ,LinX,LinY,LinZ,VelX,VelY,VelZ,DispX,DispY,DispZ,GyroX_rad_s,GyroY_rad_s,GyroZ_rad_s,AngleX_rad,AngleY_rad,AngleZ_rad");
 }
 
 void setReports() {
-  bno08x.enableReport(SH2_ACCELEROMETER);
-  bno08x.enableReport(SH2_LINEAR_ACCELERATION);
-  bno08x.enableReport(SH2_GYROSCOPE_CALIBRATED);
+  bno08x.enableReport(SH2_ACCELEROMETER, SENSOR_REPORT_INTERVAL_US);
+  bno08x.enableReport(SH2_LINEAR_ACCELERATION, SENSOR_REPORT_INTERVAL_US);
+  bno08x.enableReport(SH2_GYROSCOPE_CALIBRATED, SENSOR_REPORT_INTERVAL_US);
 }
 
 void setup() {
@@ -151,6 +194,12 @@ void loop() {
     correctedGyroX = 0;
     correctedGyroY = 0;
     correctedGyroZ = 0;
+    gyroKalmanX.reset();
+    gyroKalmanY.reset();
+    gyroKalmanZ.reset();
+    linKalmanX.reset();
+    linKalmanY.reset();
+    linKalmanZ.reset();
     accelFilterReady = false;
     linFilterReady = false;
     calibrationStartMs = millis();
@@ -189,17 +238,18 @@ void loop() {
           float correctedLinX = sensorValue.un.linearAcceleration.x - linBiasX;
           float correctedLinY = sensorValue.un.linearAcceleration.y - linBiasY;
           float correctedLinZ = sensorValue.un.linearAcceleration.z - linBiasZ;
+          float gyroMagnitude = sqrtf(
+            correctedGyroX * correctedGyroX +
+            correctedGyroY * correctedGyroY +
+            correctedGyroZ * correctedGyroZ
+          );
+          float linMeasurementNoise = LIN_KALMAN_MEASUREMENT_NOISE +
+                                      LIN_KALMAN_GYRO_NOISE_GAIN * gyroMagnitude;
 
-          if (!linFilterReady) {
-            linX = correctedLinX;
-            linY = correctedLinY;
-            linZ = correctedLinZ;
-            linFilterReady = true;
-          } else {
-            linX = lowPassFilter(linX, correctedLinX);
-            linY = lowPassFilter(linY, correctedLinY);
-            linZ = lowPassFilter(linZ, correctedLinZ);
-          }
+          linX = linKalmanX.update(correctedLinX, LIN_KALMAN_PROCESS_NOISE, linMeasurementNoise);
+          linY = linKalmanY.update(correctedLinY, LIN_KALMAN_PROCESS_NOISE, linMeasurementNoise);
+          linZ = linKalmanZ.update(correctedLinZ, LIN_KALMAN_PROCESS_NOISE, linMeasurementNoise);
+          linFilterReady = true;
         }
 
         if (recordingStarted) {
@@ -254,9 +304,21 @@ void loop() {
           break;
         }
 
-        correctedGyroX = removeSmallGyroDrift(gyroX - gyroBiasX);
-        correctedGyroY = removeSmallGyroDrift(gyroY - gyroBiasY);
-        correctedGyroZ = removeSmallGyroDrift(gyroZ - gyroBiasZ);
+        correctedGyroX = gyroKalmanX.update(
+          gyroX - gyroBiasX,
+          GYRO_KALMAN_PROCESS_NOISE,
+          GYRO_KALMAN_MEASUREMENT_NOISE
+        );
+        correctedGyroY = gyroKalmanY.update(
+          gyroY - gyroBiasY,
+          GYRO_KALMAN_PROCESS_NOISE,
+          GYRO_KALMAN_MEASUREMENT_NOISE
+        );
+        correctedGyroZ = gyroKalmanZ.update(
+          gyroZ - gyroBiasZ,
+          GYRO_KALMAN_PROCESS_NOISE,
+          GYRO_KALMAN_MEASUREMENT_NOISE
+        );
 
         if (recordingStarted) {
           unsigned long nowGyroMicros = micros();
