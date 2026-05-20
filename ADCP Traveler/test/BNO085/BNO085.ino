@@ -11,17 +11,18 @@ Adafruit_BNO08x bno08x(BNO08X_RESET);
 sh2_SensorValue_t sensorValue;
 
 const unsigned long SAMPLE_PERIOD_MS = 20;
-const uint32_t SENSOR_REPORT_INTERVAL_US = 10000;
+const uint32_t SENSOR_REPORT_INTERVAL_US = 5000;
 const unsigned long RECORD_DURATION_MS = 3600000;
-const unsigned long CALIBRATION_MS = 2000;
+const unsigned long CALIBRATION_MS = 5000;
 const float ACCEL_FILTER_ALPHA = 0.1;
 const float GYRO_DEADBAND_RADPS = 0.003;
 const float LINEAR_ACCEL_DEADBAND_MS2 = 0.015;
 const float STILL_ACCEL_THRESHOLD_MS2 = 0.04;
 const float STILL_GYRO_THRESHOLD_RADPS = 0.02;
 const float VELOCITY_ZERO_THRESHOLD_MS = 0.002;
-const float VELOCITY_DECAY_WHEN_STILL = 0.75;
+const float VELOCITY_DECAY_WHEN_STILL = 0.5;
 const unsigned int STILL_SAMPLE_LIMIT = 8;
+const bool AUTO_ZERO_VELOCITY_WHEN_STILL = false;
 const float GYRO_KALMAN_PROCESS_NOISE = 0.00005;
 const float GYRO_KALMAN_MEASUREMENT_NOISE = 0.0008;
 const float LIN_KALMAN_PROCESS_NOISE = 0.00012;
@@ -249,6 +250,9 @@ void loop() {
           linX = linKalmanX.update(correctedLinX, LIN_KALMAN_PROCESS_NOISE, linMeasurementNoise);
           linY = linKalmanY.update(correctedLinY, LIN_KALMAN_PROCESS_NOISE, linMeasurementNoise);
           linZ = linKalmanZ.update(correctedLinZ, LIN_KALMAN_PROCESS_NOISE, linMeasurementNoise);
+          linX = removeSmallLinearDrift(linX);
+          linY = removeSmallLinearDrift(linY);
+          linZ = removeSmallLinearDrift(linZ);
           linFilterReady = true;
         }
 
@@ -277,10 +281,10 @@ void loop() {
               stillSamples = 0;
             }
 
-            if (stillSamples >= STILL_SAMPLE_LIMIT) {
-              dampVelocity(velX);
-              dampVelocity(velY);
-              dampVelocity(velZ);
+            if (AUTO_ZERO_VELOCITY_WHEN_STILL && stillSamples >= STILL_SAMPLE_LIMIT) {
+              velX = 0;
+              velY = 0;
+              velZ = 0;
             }
           }
 
