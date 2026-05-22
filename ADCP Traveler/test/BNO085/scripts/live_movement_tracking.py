@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from collections import deque
 
 # ---------------- USER SETTINGS ----------------
-PORT = "COM3"      # Change this to your ESP32 port
+PORT = "COM7"      # Change this to your ESP32 port
 BAUD = 115200
 MAX_POINTS = 1000
 # ------------------------------------------------
