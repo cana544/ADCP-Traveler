@@ -19,6 +19,27 @@ constexpr unsigned long STEP_DELAY_MS = 120;
 constexpr unsigned long HOLD_AT_MAX_MS = 1000;
 constexpr unsigned long CYCLE_PAUSE_MS = 1500;
 
+#if ESP_ARDUINO_VERSION_MAJOR >= 3
+void attachPwmPin(uint8_t pin, uint8_t channel) {
+  ledcAttachChannel(pin, PWM_FREQUENCY_HZ, PWM_RESOLUTION_BITS, channel);
+}
+
+void writePwmDuty(uint8_t pin, uint8_t channel, int duty) {
+  (void)channel;
+  ledcWrite(pin, duty);
+}
+#else
+void attachPwmPin(uint8_t pin, uint8_t channel) {
+  ledcSetup(channel, PWM_FREQUENCY_HZ, PWM_RESOLUTION_BITS);
+  ledcAttachPin(pin, channel);
+}
+
+void writePwmDuty(uint8_t pin, uint8_t channel, int duty) {
+  (void)pin;
+  ledcWrite(channel, duty);
+}
+#endif
+
 uint8_t percentToDuty(uint8_t percent) {
   if (percent > 100) {
     percent = 100;
@@ -32,14 +53,14 @@ void setMotorDuty(int duty) {
                    static_cast<int>(PWM_MAX_DUTY));
 
   if (duty > 0) {
-    ledcWrite(RPWM_CHANNEL, duty);
-    ledcWrite(LPWM_CHANNEL, 0);
+    writePwmDuty(RPWM_PIN, RPWM_CHANNEL, duty);
+    writePwmDuty(LPWM_PIN, LPWM_CHANNEL, 0);
   } else if (duty < 0) {
-    ledcWrite(RPWM_CHANNEL, 0);
-    ledcWrite(LPWM_CHANNEL, -duty);
+    writePwmDuty(RPWM_PIN, RPWM_CHANNEL, 0);
+    writePwmDuty(LPWM_PIN, LPWM_CHANNEL, -duty);
   } else {
-    ledcWrite(RPWM_CHANNEL, 0);
-    ledcWrite(LPWM_CHANNEL, 0);
+    writePwmDuty(RPWM_PIN, RPWM_CHANNEL, 0);
+    writePwmDuty(LPWM_PIN, LPWM_CHANNEL, 0);
   }
 }
 
@@ -84,10 +105,8 @@ void setup() {
   digitalWrite(REN_PIN, HIGH);
   digitalWrite(LEN_PIN, HIGH);
 
-  ledcSetup(RPWM_CHANNEL, PWM_FREQUENCY_HZ, PWM_RESOLUTION_BITS);
-  ledcSetup(LPWM_CHANNEL, PWM_FREQUENCY_HZ, PWM_RESOLUTION_BITS);
-  ledcAttachPin(RPWM_PIN, RPWM_CHANNEL);
-  ledcAttachPin(LPWM_PIN, LPWM_CHANNEL);
+  attachPwmPin(RPWM_PIN, RPWM_CHANNEL);
+  attachPwmPin(LPWM_PIN, LPWM_CHANNEL);
 
   stopMotor();
 
