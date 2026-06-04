@@ -23,6 +23,12 @@ struct AccelCalibration {
   bool valid;
 };
 
+struct AccelFullCalibration {
+  float M[3][3];
+  Vector3f b;
+  bool valid;
+};
+
 class ImuCalibration {
  public:
   static Vector3f applyAccel(const Vector3f& raw,
@@ -31,6 +37,12 @@ class ImuCalibration {
                                    const AccelCalibration& calibration);
   static bool loadAccelCalibration(const JsonDocument& doc,
                                    AccelCalibration& calibration);
+  static Vector3f applyAccelFull(const Vector3f& raw,
+                                 const AccelFullCalibration& calibration);
+  static bool saveAccelFullCalibration(JsonDocument& doc,
+                                       const AccelFullCalibration& calibration);
+  static bool loadAccelFullCalibration(const JsonDocument& doc,
+                                       AccelFullCalibration& calibration);
   static bool fitAccelCalibrationFromPoseMeans(
       const AccelPoseMean& xPos, const AccelPoseMean& xNeg,
       const AccelPoseMean& yPos, const AccelPoseMean& yNeg,
