@@ -20,10 +20,11 @@ constexpr uint8_t RAMP_STEP_PERCENT = 3;
 constexpr unsigned long STEP_DELAY_MS = 120;
 constexpr unsigned long HOLD_AT_MAX_MS = 1000;
 constexpr unsigned long CYCLE_PAUSE_MS = 1500;
-constexpr unsigned long REPORT_INTERVAL_MS = 200;
+constexpr unsigned long REPORT_INTERVAL_MS = 40;
 constexpr float PULSES_PER_REV = 50.0f;
 constexpr uint32_t MIN_PULSE_PERIOD_US = 2000UL;
 constexpr uint32_t STOP_TIMEOUT_US = 1000000UL;
+constexpr float RPM_FILTER_ALPHA = 0.60f;
 
 #if defined(ESP32)
 #define ISR_ATTR IRAM_ATTR
@@ -136,16 +137,24 @@ void reportEncoderCsv() {
   if (pulseTimeUs == 0 || timeSincePulseUs > STOP_TIMEOUT_US) {
     filteredRPM = 0.0f;
   } else if (periodUs > 0) {
-    float measuredRPM = 60000000.0f / (PULSES_PER_REV * periodUs);
+    // Use the larger of the last period and current time-since-pulse so
+    // reported RPM decays in real-time during ramp-down, instead of staying
+    // stale.
+    uint32_t effectivePeriodUs = periodUs;
+    if (timeSincePulseUs > effectivePeriodUs) {
+      effectivePeriodUs = timeSincePulseUs;
+    }
+
+    float measuredRPM = 60000000.0f / (PULSES_PER_REV * effectivePeriodUs);
     if (!cw) {
       measuredRPM = -measuredRPM;
     }
 
-    const float alpha = 0.25f;
     if (filteredRPM == 0.0f) {
       filteredRPM = measuredRPM;
     } else {
-      filteredRPM = alpha * measuredRPM + (1.0f - alpha) * filteredRPM;
+      filteredRPM = RPM_FILTER_ALPHA * measuredRPM +
+                    (1.0f - RPM_FILTER_ALPHA) * filteredRPM;
     }
   }
 
