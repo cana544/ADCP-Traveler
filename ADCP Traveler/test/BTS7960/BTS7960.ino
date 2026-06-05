@@ -13,7 +13,7 @@ constexpr uint32_t PWM_FREQUENCY_HZ = 20000;
 constexpr uint8_t PWM_RESOLUTION_BITS = 8;
 constexpr uint8_t PWM_MAX_DUTY = 255;
 
-constexpr uint8_t TARGET_MAX_PERCENT = 90;
+constexpr uint8_t TARGET_MAX_PERCENT = 100;
 constexpr uint8_t RAMP_STEP_PERCENT = 3;
 constexpr unsigned long STEP_DELAY_MS = 120;
 constexpr unsigned long HOLD_AT_MAX_MS = 1000;
@@ -112,7 +112,7 @@ void setup() {
 
   Serial.println("BTS7960 motor test ready.");
   Serial.println(
-      "Sequence: 0 -> 90% CW, back to 0, then 0 -> 90% CCW, back to 0.");
+      "Sequence: 0 -> 100% CW, back to 0, then 0 -> 100% CCW, back to 0.");
 }
 
 void loop() {
