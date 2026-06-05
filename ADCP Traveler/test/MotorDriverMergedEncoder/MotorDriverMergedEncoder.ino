@@ -26,22 +26,8 @@ constexpr uint32_t MIN_PULSE_PERIOD_US = 2000UL;
 constexpr uint32_t STOP_TIMEOUT_US = 1000000UL;
 constexpr float RPM_FILTER_ALPHA = 0.60f;
 
-#if defined(ESP32)
 #define ISR_ATTR IRAM_ATTR
-#else
-#define ISR_ATTR
-#endif
 
-#if ESP_ARDUINO_VERSION_MAJOR >= 3
-void attachPwmPin(uint8_t pin, uint8_t channel) {
-  ledcAttachChannel(pin, PWM_FREQUENCY_HZ, PWM_RESOLUTION_BITS, channel);
-}
-
-void writePwmDuty(uint8_t pin, uint8_t channel, int duty) {
-  (void)channel;
-  ledcWrite(pin, duty);
-}
-#else
 void attachPwmPin(uint8_t pin, uint8_t channel) {
   ledcSetup(channel, PWM_FREQUENCY_HZ, PWM_RESOLUTION_BITS);
   ledcAttachPin(pin, channel);
@@ -51,7 +37,6 @@ void writePwmDuty(uint8_t pin, uint8_t channel, int duty) {
   (void)pin;
   ledcWrite(channel, duty);
 }
-#endif
 
 volatile bool commandedCW = true;
 volatile long signedPulseCount = 0;
