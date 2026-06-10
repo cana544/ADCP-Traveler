@@ -23,16 +23,25 @@ void LedController::begin(uint8_t ledPin) {
   setLed(false);
 }
 
+void LedController::writePwm(uint8_t value) {
+#if ESP_ARDUINO_VERSION_MAJOR >= 3
+  ledcWrite(ledPin_, value);
+#else
+  ledcWrite(pwmChannel_, value);
+#endif
+}
+
 void LedController::setLed(bool on) {
   ledOn_ = on;
+
+  if (on && currentPwm_ == 0) {
+    currentPwm_ = DEFAULT_ON_PWM;
+  }
+
   if (on) {
-    // Start at 0% brightness
-    currentPwm_ = 0;
-    ledcWrite(ledPin_, 0);
+    writePwm(currentPwm_);
   } else {
-    // Turn off
-    currentPwm_ = 0;
-    ledcWrite(ledPin_, 0);
+    writePwm(0);
   }
 
   logState("setLed");
@@ -40,11 +49,10 @@ void LedController::setLed(bool on) {
 
 void LedController::setPwm(uint8_t value) {
   currentPwm_ = value;
-  // Only write to LED if it's actually ON
-  // This allows slider to move even when OFF, but doesn't affect LED
-  if (ledOn_) {
-    ledcWrite(ledPin_, value);
-  }
+
+  ledOn_ = value > 0;
+  writePwm(value);
+
   logState("setPwm");
 }
 

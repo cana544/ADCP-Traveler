@@ -15,6 +15,8 @@ class LedController {
   uint8_t currentPwm() const;
 
  private:
+  static constexpr uint8_t DEFAULT_ON_PWM = 255;
+
   uint8_t ledPin_;
   uint8_t pwmChannel_;
   uint32_t frequency_;
@@ -22,6 +24,7 @@ class LedController {
   bool ledOn_;
   uint8_t currentPwm_;
 
+  void writePwm(uint8_t value);
   void logState(const char* source) const;
 };
 

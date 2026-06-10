@@ -75,7 +75,7 @@ bool Imu::ImuCalibration::saveAccelFullCalibration(
     JsonDocument& doc, const AccelFullCalibration& calibration) {
   JsonArray matrix = doc["M"].to<JsonArray>();
   for (int row = 0; row < 3; ++row) {
-    JsonArray matrixRow = matrix.add<JsonArray>();
+    JsonArray matrixRow = matrix.createNestedArray();
     for (int col = 0; col < 3; ++col) {
       matrixRow.add(calibration.M[row][col]);
     }

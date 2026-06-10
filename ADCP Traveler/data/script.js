@@ -194,11 +194,6 @@ brightnessSlider.addEventListener("touchend", () => {
 });
 
 brightnessSlider.addEventListener("input", (event) => {
-  // Only send commands when LED is on
-  if (!isLedOn) {
-    return;
-  }
-
   const sliderValue = parseInt(event.target.value, 10);
   updateBrightnessDisplay(sliderValue);
   messageElement.textContent = "Adjusting brightness...";
@@ -208,11 +203,6 @@ brightnessSlider.addEventListener("input", (event) => {
 });
 
 brightnessSlider.addEventListener("change", (event) => {
-  // Only send commands when LED is on
-  if (!isLedOn) {
-    return;
-  }
-
   const sliderValue = parseInt(event.target.value, 10);
   sendPwmValue(sliderValue);
 });

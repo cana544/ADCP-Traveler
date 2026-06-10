@@ -10,7 +10,7 @@ constexpr char AP_PASSWORD[] = "password";
 }  // namespace Wifi
 
 namespace Pins {
-constexpr uint8_t ONBOARD_LED = 2;
+constexpr uint8_t ONBOARD_LED = 4;
 }
 
 namespace Files {
