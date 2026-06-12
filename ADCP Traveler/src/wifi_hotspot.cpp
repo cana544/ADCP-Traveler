@@ -16,8 +16,7 @@ void onWebSocketEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
     g_activeHotspot->handleWebSocketEvent(client, type, data, len);
   }
 }
-WifiHotspot::WifiHotspot()
-    : motorController_(), server_(80), ws_("/ws"), jogStopAtMs_(0) {}
+WifiHotspot::WifiHotspot() : motorController_(), server_(80), ws_("/ws") {}
 
 void WifiHotspot::setMotorEnabled(bool enabled) {
   motorController_.setEnabled(enabled);
@@ -170,44 +169,6 @@ void WifiHotspot::handleMotorSpeed(AsyncWebServerRequest* request) {
   }
 
   setMotorSpeed(speed);
-  jogStopAtMs_ = 0;
-  broadcastMotorState();
-  sendMotorStateResponse(request);
-}
-
-void WifiHotspot::handleMotorJog(AsyncWebServerRequest* request) {
-  if (!request->hasParam("direction")) {
-    request->send(400, "application/json",
-                  "{\"error\":\"Missing direction parameter\"}");
-    return;
-  }
-
-  String direction = request->getParam("direction")->value();
-  direction.toLowerCase();
-
-  int speed = 255;
-  if (request->hasParam("speed")) {
-    speed = request->getParam("speed")->value().toInt();
-  }
-  speed = constrain(speed, 0, 255);
-
-  unsigned long durationMs = 1200;
-  if (request->hasParam("ms")) {
-    durationMs = request->getParam("ms")->value().toInt();
-  }
-  durationMs = constrain(durationMs, 100UL, 5000UL);
-
-  if (direction == "cw") {
-    setMotorSpeed(speed);
-  } else if (direction == "ccw") {
-    setMotorSpeed(-speed);
-  } else {
-    request->send(400, "application/json",
-                  "{\"error\":\"Direction must be cw or ccw\"}");
-    return;
-  }
-
-  jogStopAtMs_ = millis() + durationMs;
   broadcastMotorState();
   sendMotorStateResponse(request);
 }
@@ -243,7 +204,6 @@ void WifiHotspot::handleWebSocketEvent(AsyncWebSocketClient* client,
       if (strcmp(cmd, "speed") == 0 && doc.containsKey("value")) {
         int speed = doc["value"];
         setMotorSpeed(speed);
-        jogStopAtMs_ = 0;
         broadcastMotorState();
 
         DynamicJsonDocument response(256);
@@ -359,10 +319,6 @@ void WifiHotspot::begin(uint8_t rpwmPin, uint8_t lpwmPin, uint8_t renPin,
     this->handleMotorSpeed(request);
   });
 
-  server_.on("/motor/jog", HTTP_GET, [this](AsyncWebServerRequest* request) {
-    this->handleMotorJog(request);
-  });
-
   server_.on("/wifi/signal", HTTP_GET, [this](AsyncWebServerRequest* request) {
     this->handleWifiSignal(request);
   });
@@ -381,13 +337,7 @@ void WifiHotspot::begin(uint8_t rpwmPin, uint8_t lpwmPin, uint8_t renPin,
   Serial.println("WebSocket server started at /ws");
 }
 
-void WifiHotspot::update() {
-  if (jogStopAtMs_ != 0 && static_cast<long>(millis() - jogStopAtMs_) >= 0) {
-    jogStopAtMs_ = 0;
-    setMotorSpeed(0);
-    broadcastMotorState();
-  }
-}
+void WifiHotspot::update() {}
 
 bool WifiHotspot::isMotorEnabled() const {
   return motorController_.isEnabled();

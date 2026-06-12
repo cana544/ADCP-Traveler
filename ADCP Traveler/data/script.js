@@ -142,9 +142,6 @@ async function sendHttpCommand(cmd) {
 
   if (cmd.cmd === "speed") {
     endpoint = `/motor/speed?value=${encodeURIComponent(cmd.value)}`;
-  } else if (cmd.cmd === "jog") {
-    endpoint =
-      `/motor/jog?direction=${encodeURIComponent(cmd.direction)}&speed=${encodeURIComponent(cmd.speed)}&ms=${encodeURIComponent(cmd.ms)}`;
   } else if (cmd.cmd === "on") {
     endpoint = "/motor/on";
   } else if (cmd.cmd === "off") {
@@ -225,11 +222,6 @@ function sendOffCommand() {
   }, 500);
 }
 
-function sendJogCommand(direction) {
-  messageElement.textContent = `${direction.toUpperCase()} test...`;
-  sendMotorCommand({ cmd: "jog", direction, speed: 255, ms: 1200 });
-}
-
 motorSpeedSlider.addEventListener("mousedown", () => {
   isUserDragging = true;
 });
@@ -260,12 +252,6 @@ motorSpeedSlider.addEventListener("change", (event) => {
 
 document.getElementById("motor-on").addEventListener("click", sendOnCommand);
 document.getElementById("motor-off").addEventListener("click", sendOffCommand);
-document
-  .getElementById("motor-test-ccw")
-  .addEventListener("click", () => sendJogCommand("ccw"));
-document
-  .getElementById("motor-test-cw")
-  .addEventListener("click", () => sendJogCommand("cw"));
 
 connectWebSocket();
 refreshWifiSignal();

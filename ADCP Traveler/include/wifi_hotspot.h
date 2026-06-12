@@ -21,7 +21,6 @@ class WifiHotspot {
   MotorController motorController_;
   AsyncWebServer server_;
   AsyncWebSocket ws_;
-  unsigned long jogStopAtMs_;
 
   void setMotorEnabled(bool enabled);
   void setMotorSpeed(int speed);
@@ -35,7 +34,6 @@ class WifiHotspot {
   void handleMotorOff(AsyncWebServerRequest* request);
   void handleMotorStatus(AsyncWebServerRequest* request);
   void handleMotorSpeed(AsyncWebServerRequest* request);
-  void handleMotorJog(AsyncWebServerRequest* request);
   void handleWifiSignal(AsyncWebServerRequest* request);
   void handleNotFound(AsyncWebServerRequest* request);
 };

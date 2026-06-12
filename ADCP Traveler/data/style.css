@@ -141,10 +141,6 @@ h1 {
   gap: 14px;
 }
 
-.jog-row {
-  margin-top: 14px;
-}
-
 .action-button {
   border: none;
   border-radius: 12px;
@@ -177,16 +173,6 @@ h1 {
 .action-off {
   background: linear-gradient(135deg, #ef5d5d, var(--off));
   box-shadow: 0 12px 22px rgba(214, 69, 69, 0.28);
-}
-
-.action-jog-cw {
-  background: linear-gradient(135deg, #19b879, var(--cw));
-  box-shadow: 0 12px 22px rgba(15, 157, 88, 0.24);
-}
-
-.action-jog-ccw {
-  background: linear-gradient(135deg, #4f8fd9, var(--ccw));
-  box-shadow: 0 12px 22px rgba(39, 105, 177, 0.24);
 }
 
 .message {
