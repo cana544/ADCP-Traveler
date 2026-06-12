@@ -1,5 +1,9 @@
 #include <Arduino.h>
 
+#if __has_include(<esp_arduino_version.h>)
+#include <esp_arduino_version.h>
+#endif
+
 // BTS7960 motor driver pins (ESP32-friendly defaults).
 constexpr uint8_t RPWM_PIN = 25;
 constexpr uint8_t LPWM_PIN = 26;
@@ -29,13 +33,23 @@ constexpr float RPM_FILTER_ALPHA = 0.60f;
 #define ISR_ATTR IRAM_ATTR
 
 void attachPwmPin(uint8_t pin, uint8_t channel) {
+#if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
+  (void)channel;
+  ledcAttach(pin, PWM_FREQUENCY_HZ, PWM_RESOLUTION_BITS);
+#else
   ledcSetup(channel, PWM_FREQUENCY_HZ, PWM_RESOLUTION_BITS);
   ledcAttachPin(pin, channel);
+#endif
 }
 
 void writePwmDuty(uint8_t pin, uint8_t channel, int duty) {
+#if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
+  (void)channel;
+  ledcWrite(pin, duty);
+#else
   (void)pin;
   ledcWrite(channel, duty);
+#endif
 }
 
 volatile bool commandedCW = true;

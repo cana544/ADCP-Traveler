@@ -2,7 +2,7 @@
 
 #define ENCODER_PIN 21
 #define SLOTS_PER_REV 50.0f
-#define REPORT_INTERVAL_MS 200
+#define REPORT_INTERVAL_MS 100
 
 // Reject pulses closer than 2 ms.
 // This still allows speeds far above your motor's expected speed.
