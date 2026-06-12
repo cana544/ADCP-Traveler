@@ -17,17 +17,38 @@ void onWebSocketEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
   }
 }
 WifiHotspot::WifiHotspot()
-    : onboardLedPin_(2), ledController_(), server_(80), ws_("/ws") {}
+    : motorController_(), server_(80), ws_("/ws"), jogStopAtMs_(0) {}
 
-void WifiHotspot::setLed(bool on) { ledController_.setLed(on); }
+void WifiHotspot::setMotorEnabled(bool enabled) {
+  motorController_.setEnabled(enabled);
+}
 
-void WifiHotspot::setPwm(uint8_t value) { ledController_.setPwm(value); }
+void WifiHotspot::setMotorSpeed(int speed) { motorController_.setSpeed(speed); }
 
-void WifiHotspot::sendLedStateResponse(AsyncWebServerRequest* request) {
-  const String state = ledController_.isOn() ? "on" : "off";
-  String response = "{\"state\":\"" + state +
-                    "\",\"pwm\":" + String(ledController_.currentPwm()) + "}";
+void WifiHotspot::sendMotorStateResponse(AsyncWebServerRequest* request) {
+  const int speed = motorController_.currentSpeed();
+  String direction = "stop";
+  if (speed > 0) {
+    direction = "cw";
+  } else if (speed < 0) {
+    direction = "ccw";
+  }
+
+  const String state = motorController_.isEnabled() ? "on" : "off";
+  String response = "{\"state\":\"" + state + "\",\"direction\":\"" +
+                    direction + "\",\"speed\":" + String(speed) + "}";
   request->send(200, "application/json", response);
+}
+
+void WifiHotspot::broadcastMotorState() {
+  const int speed = motorController_.currentSpeed();
+  DynamicJsonDocument response(256);
+  response["state"] = motorController_.isEnabled() ? "on" : "off";
+  response["speed"] = speed;
+
+  String responseStr;
+  serializeJson(response, responseStr);
+  ws_.textAll(responseStr);
 }
 
 void WifiHotspot::sendWifiSignalResponse(AsyncWebServerRequest* request) {
@@ -89,7 +110,12 @@ bool WifiHotspot::serveFile(AsyncWebServerRequest* request, const char* path,
   if (!SPIFFS.exists(path)) {
     return false;
   }
-  request->send(SPIFFS, path, contentType);
+  AsyncWebServerResponse* response =
+      request->beginResponse(SPIFFS, path, contentType);
+  response->addHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+  response->addHeader("Pragma", "no-cache");
+  response->addHeader("Expires", "0");
+  request->send(response);
   return true;
 }
 
@@ -107,39 +133,83 @@ void WifiHotspot::handleRoot(AsyncWebServerRequest* request) {
   }
 }
 
-void WifiHotspot::handleLedOn(AsyncWebServerRequest* request) {
-  setLed(true);
-  sendLedStateResponse(request);
+void WifiHotspot::handleMotorOn(AsyncWebServerRequest* request) {
+  setMotorEnabled(true);
+  setMotorSpeed(0);
+  broadcastMotorState();
+  sendMotorStateResponse(request);
 }
 
-void WifiHotspot::handleLedOff(AsyncWebServerRequest* request) {
-  setLed(false);
-  sendLedStateResponse(request);
+void WifiHotspot::handleMotorOff(AsyncWebServerRequest* request) {
+  setMotorSpeed(0);
+  setMotorEnabled(false);
+  broadcastMotorState();
+  sendMotorStateResponse(request);
 }
 
-void WifiHotspot::handleLedStatus(AsyncWebServerRequest* request) {
-  sendLedStateResponse(request);
+void WifiHotspot::handleMotorStatus(AsyncWebServerRequest* request) {
+  sendMotorStateResponse(request);
 }
 
 void WifiHotspot::handleWifiSignal(AsyncWebServerRequest* request) {
   sendWifiSignalResponse(request);
 }
 
-void WifiHotspot::handleLedPwm(AsyncWebServerRequest* request) {
+void WifiHotspot::handleMotorSpeed(AsyncWebServerRequest* request) {
   if (!request->hasParam("value")) {
     request->send(400, "application/json",
                   "{\"error\":\"Missing value parameter\"}");
     return;
   }
 
-  int pwmValue = request->getParam("value")->value().toInt();
-  if (pwmValue < 0 || pwmValue > 255) {
-    request->send(400, "application/json", "{\"error\":\"PWM must be 0-255\"}");
+  int speed = request->getParam("value")->value().toInt();
+  if (speed < -255 || speed > 255) {
+    request->send(400, "application/json",
+                  "{\"error\":\"Speed must be -255 to 255\"}");
     return;
   }
 
-  setPwm((uint8_t)pwmValue);
-  sendLedStateResponse(request);
+  setMotorSpeed(speed);
+  jogStopAtMs_ = 0;
+  broadcastMotorState();
+  sendMotorStateResponse(request);
+}
+
+void WifiHotspot::handleMotorJog(AsyncWebServerRequest* request) {
+  if (!request->hasParam("direction")) {
+    request->send(400, "application/json",
+                  "{\"error\":\"Missing direction parameter\"}");
+    return;
+  }
+
+  String direction = request->getParam("direction")->value();
+  direction.toLowerCase();
+
+  int speed = 255;
+  if (request->hasParam("speed")) {
+    speed = request->getParam("speed")->value().toInt();
+  }
+  speed = constrain(speed, 0, 255);
+
+  unsigned long durationMs = 1200;
+  if (request->hasParam("ms")) {
+    durationMs = request->getParam("ms")->value().toInt();
+  }
+  durationMs = constrain(durationMs, 100UL, 5000UL);
+
+  if (direction == "cw") {
+    setMotorSpeed(speed);
+  } else if (direction == "ccw") {
+    setMotorSpeed(-speed);
+  } else {
+    request->send(400, "application/json",
+                  "{\"error\":\"Direction must be cw or ccw\"}");
+    return;
+  }
+
+  jogStopAtMs_ = millis() + durationMs;
+  broadcastMotorState();
+  sendMotorStateResponse(request);
 }
 
 void WifiHotspot::handleNotFound(AsyncWebServerRequest* request) {
@@ -170,36 +240,41 @@ void WifiHotspot::handleWebSocketEvent(AsyncWebSocketClient* client,
         return;
       }
 
-      if (strcmp(cmd, "pwm") == 0 && doc.containsKey("value")) {
-        uint8_t pwmValue = doc["value"];
-        setPwm(pwmValue);
+      if (strcmp(cmd, "speed") == 0 && doc.containsKey("value")) {
+        int speed = doc["value"];
+        setMotorSpeed(speed);
+        jogStopAtMs_ = 0;
+        broadcastMotorState();
 
-        // Send state update back to client
         DynamicJsonDocument response(256);
-        response["state"] = ledController_.isOn() ? "on" : "off";
-        response["pwm"] = ledController_.currentPwm();
+        response["state"] = motorController_.isEnabled() ? "on" : "off";
+        response["speed"] = motorController_.currentSpeed();
 
         String responseStr;
         serializeJson(response, responseStr);
         client->text(responseStr);
 
       } else if (strcmp(cmd, "on") == 0) {
-        setLed(true);
+        setMotorEnabled(true);
+        setMotorSpeed(0);
+        broadcastMotorState();
 
         DynamicJsonDocument response(256);
         response["state"] = "on";
-        response["pwm"] = ledController_.currentPwm();
+        response["speed"] = motorController_.currentSpeed();
 
         String responseStr;
         serializeJson(response, responseStr);
         client->text(responseStr);
 
       } else if (strcmp(cmd, "off") == 0) {
-        setLed(false);
+        setMotorSpeed(0);
+        setMotorEnabled(false);
+        broadcastMotorState();
 
         DynamicJsonDocument response(256);
         response["state"] = "off";
-        response["pwm"] = ledController_.currentPwm();
+        response["speed"] = motorController_.currentSpeed();
 
         String responseStr;
         serializeJson(response, responseStr);
@@ -207,8 +282,8 @@ void WifiHotspot::handleWebSocketEvent(AsyncWebSocketClient* client,
 
       } else if (strcmp(cmd, "status") == 0) {
         DynamicJsonDocument response(256);
-        response["state"] = ledController_.isOn() ? "on" : "off";
-        response["pwm"] = ledController_.currentPwm();
+        response["state"] = motorController_.isEnabled() ? "on" : "off";
+        response["speed"] = motorController_.currentSpeed();
 
         String responseStr;
         serializeJson(response, responseStr);
@@ -226,11 +301,11 @@ void WifiHotspot::handleWebSocketEvent(AsyncWebSocketClient* client,
   }
 }
 
-void WifiHotspot::begin(uint8_t ledPin) {
-  onboardLedPin_ = ledPin;
+void WifiHotspot::begin(uint8_t rpwmPin, uint8_t lpwmPin, uint8_t renPin,
+                        uint8_t lenPin) {
   g_activeHotspot = this;
 
-  ledController_.begin(onboardLedPin_);
+  motorController_.begin(rpwmPin, lpwmPin, renPin, lenPin);
 
   WiFi.mode(WIFI_AP);
 
@@ -268,20 +343,24 @@ void WifiHotspot::begin(uint8_t ledPin) {
     this->serveFile(request, "/script.js", "application/javascript");
   });
 
-  server_.on("/led/on", HTTP_GET, [this](AsyncWebServerRequest* request) {
-    this->handleLedOn(request);
+  server_.on("/motor/on", HTTP_GET, [this](AsyncWebServerRequest* request) {
+    this->handleMotorOn(request);
   });
 
-  server_.on("/led/off", HTTP_GET, [this](AsyncWebServerRequest* request) {
-    this->handleLedOff(request);
+  server_.on("/motor/off", HTTP_GET, [this](AsyncWebServerRequest* request) {
+    this->handleMotorOff(request);
   });
 
-  server_.on("/led/status", HTTP_GET, [this](AsyncWebServerRequest* request) {
-    this->handleLedStatus(request);
+  server_.on("/motor/status", HTTP_GET, [this](AsyncWebServerRequest* request) {
+    this->handleMotorStatus(request);
   });
 
-  server_.on("/led/pwm", HTTP_GET, [this](AsyncWebServerRequest* request) {
-    this->handleLedPwm(request);
+  server_.on("/motor/speed", HTTP_GET, [this](AsyncWebServerRequest* request) {
+    this->handleMotorSpeed(request);
+  });
+
+  server_.on("/motor/jog", HTTP_GET, [this](AsyncWebServerRequest* request) {
+    this->handleMotorJog(request);
   });
 
   server_.on("/wifi/signal", HTTP_GET, [this](AsyncWebServerRequest* request) {
@@ -303,8 +382,13 @@ void WifiHotspot::begin(uint8_t ledPin) {
 }
 
 void WifiHotspot::update() {
-  // AsyncWebServer handles everything automatically
-  // This is now a no-op but kept for compatibility
+  if (jogStopAtMs_ != 0 && static_cast<long>(millis() - jogStopAtMs_) >= 0) {
+    jogStopAtMs_ = 0;
+    setMotorSpeed(0);
+    broadcastMotorState();
+  }
 }
 
-bool WifiHotspot::isLedOn() const { return ledController_.isOn(); }
+bool WifiHotspot::isMotorEnabled() const {
+  return motorController_.isEnabled();
+}

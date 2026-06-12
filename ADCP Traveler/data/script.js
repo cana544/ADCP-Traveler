@@ -1,18 +1,17 @@
-const stateElement = document.getElementById("led-state");
+const stateElement = document.getElementById("motor-state");
 const wifiSignalElement = document.getElementById("wifi-signal");
 const wifiBarsElement = document.getElementById("wifi-bars");
 const messageElement = document.getElementById("message");
-const brightnessSlider = document.getElementById("brightness-slider");
-const brightnessValue = document.getElementById("brightness-value");
-const brightnessControl = document.querySelector(".brightness-control");
+const motorSpeedSlider = document.getElementById("motor-speed-slider");
+const motorSpeedValue = document.getElementById("motor-speed-value");
+const motorControl = document.querySelector(".motor-control");
 const buttons = Array.from(document.querySelectorAll(".action-button"));
 
-let currentPwm = 0;
+let currentSpeed = 0;
 let isUserDragging = false;
-let isLedOn = false;
 let ws = null;
-let pwmSendTimer = null;
-let pendingPwmValue = null;
+let speedSendTimer = null;
+let pendingSpeedValue = null;
 
 function setButtonsDisabled(disabled) {
   buttons.forEach((button) => {
@@ -20,42 +19,43 @@ function setButtonsDisabled(disabled) {
   });
 }
 
-function updateBrightnessDisplay(displayValue) {
-  // displayValue is the slider position (0-255), not necessarily the actual PWM
-  currentPwm = displayValue;
-  const percentage = Math.round((displayValue / 255) * 100);
-  brightnessValue.textContent = `${percentage}%`;
+function updateMotorSpeedDisplay(speed) {
+  currentSpeed = Math.max(-255, Math.min(255, speed));
+  const percentage = Math.round((Math.abs(currentSpeed) / 255) * 100);
+  let direction = "STOP";
+
+  if (currentSpeed > 0) {
+    direction = "CW";
+  } else if (currentSpeed < 0) {
+    direction = "CCW";
+  }
+
+  motorSpeedValue.textContent =
+    currentSpeed === 0 ? "STOP" : `${direction} ${percentage}%`;
+
   if (!isUserDragging) {
-    brightnessSlider.value = displayValue;
+    motorSpeedSlider.value = currentSpeed;
   }
 
-  let glowIntensity = 0;
-  if (displayValue <= 0) glowIntensity = 0;
-  else if (displayValue <= 64) glowIntensity = 1;
-  else if (displayValue <= 127) glowIntensity = 2;
-  else if (displayValue <= 191) glowIntensity = 3;
-  else glowIntensity = 4;
-
-  brightnessControl.dataset.brightness = glowIntensity;
+  motorControl.dataset.direction = direction.toLowerCase();
 }
 
-function updateStateFromPwm(pwm) {
-  // Linear mapping: PWM 0-255 maps directly to slider 0-255
-  updateBrightnessDisplay(pwm);
-}
+function updateState(state, speed) {
+  const enabled = state === "on";
 
-function updateState(state, pwm) {
-  isLedOn = state === "on";
-  stateElement.textContent = isLedOn ? "ON" : "OFF";
-  stateElement.classList.toggle("status-on", isLedOn);
-  stateElement.classList.toggle("status-off", !isLedOn);
-
-  // When LED is OFF, always display 0% brightness
-  if (!isLedOn) {
-    updateBrightnessDisplay(0);
-  } else if (Number.isFinite(pwm)) {
-    updateStateFromPwm(pwm);
+  if (!enabled) {
+    stateElement.textContent = "OFF";
+  } else if (speed > 0) {
+    stateElement.textContent = "CW";
+  } else if (speed < 0) {
+    stateElement.textContent = "CCW";
+  } else {
+    stateElement.textContent = "STOPPED";
   }
+
+  stateElement.classList.toggle("status-on", enabled);
+  stateElement.classList.toggle("status-off", !enabled);
+  updateMotorSpeedDisplay(Number.isFinite(speed) ? speed : 0);
 }
 
 function updateWifiSignal(data) {
@@ -80,7 +80,7 @@ function updateWifiSignal(data) {
 
 async function refreshWifiSignal() {
   try {
-    const response = await fetch('/wifi/signal', { keepalive: true });
+    const response = await fetch("/wifi/signal", { keepalive: true });
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
@@ -88,50 +88,42 @@ async function refreshWifiSignal() {
     const data = await response.json();
     updateWifiSignal(data);
   } catch (error) {
-    wifiBarsElement.dataset.quality = '0';
-    wifiSignalElement.textContent = 'Unavailable';
-    wifiSignalElement.classList.remove('status-on');
-    wifiSignalElement.classList.add('status-off');
+    wifiBarsElement.dataset.quality = "0";
+    wifiSignalElement.textContent = "Unavailable";
+    wifiSignalElement.classList.remove("status-on");
+    wifiSignalElement.classList.add("status-off");
   }
 }
 
-// WebSocket connection
 function connectWebSocket() {
-  ws = new WebSocket('ws://192.168.4.1/ws');
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
 
   ws.onopen = () => {
-    console.log('WebSocket connected');
-    messageElement.textContent = 'Connected to ESP32 via WebSocket';
+    messageElement.textContent = "Connected to ESP32 via WebSocket";
     setButtonsDisabled(false);
-    
-    // Request initial status
-    ws.send(JSON.stringify({ cmd: 'status' }));
+    ws.send(JSON.stringify({ cmd: "status" }));
   };
 
   ws.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data);
-      console.log('Received:', data);
 
-      if (data.state !== undefined && data.pwm !== undefined) {
-        updateState(data.state, data.pwm);
+      if (data.state !== undefined && data.speed !== undefined) {
+        updateState(data.state, data.speed);
       }
     } catch (error) {
-      console.error('Failed to parse message:', error);
+      console.error("Failed to parse message:", error);
     }
   };
 
-  ws.onerror = (error) => {
-    console.error('WebSocket error:', error);
-    messageElement.textContent = 'WebSocket connection error';
+  ws.onerror = () => {
+    messageElement.textContent = "WebSocket connection error";
   };
 
   ws.onclose = () => {
-    console.log('WebSocket disconnected');
-    messageElement.textContent = 'Disconnected from ESP32. Reconnecting...';
+    messageElement.textContent = "Disconnected from ESP32. Reconnecting...";
     setButtonsDisabled(true);
-    
-    // Try to reconnect after 3 seconds
     setTimeout(connectWebSocket, 3000);
   };
 }
@@ -139,84 +131,142 @@ function connectWebSocket() {
 function sendWebSocketCommand(cmd) {
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify(cmd));
-  } else {
-    messageElement.textContent = 'WebSocket not connected';
+    return true;
   }
+
+  return false;
 }
 
-function sendPwmValue(pwmValue) {
-  pendingPwmValue = pwmValue;
+async function sendHttpCommand(cmd) {
+  let endpoint = null;
 
-  if (pwmSendTimer) {
+  if (cmd.cmd === "speed") {
+    endpoint = `/motor/speed?value=${encodeURIComponent(cmd.value)}`;
+  } else if (cmd.cmd === "jog") {
+    endpoint =
+      `/motor/jog?direction=${encodeURIComponent(cmd.direction)}&speed=${encodeURIComponent(cmd.speed)}&ms=${encodeURIComponent(cmd.ms)}`;
+  } else if (cmd.cmd === "on") {
+    endpoint = "/motor/on";
+  } else if (cmd.cmd === "off") {
+    endpoint = "/motor/off";
+  } else if (cmd.cmd === "status") {
+    endpoint = "/motor/status";
+  }
+
+  if (!endpoint) {
     return;
   }
 
-  pwmSendTimer = setTimeout(() => {
-    pwmSendTimer = null;
+  try {
+    const response = await fetch(endpoint, { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
 
-    if (pendingPwmValue === null) {
+    const data = await response.json();
+    if (data.state !== undefined && data.speed !== undefined) {
+      updateState(data.state, data.speed);
+    }
+  } catch (error) {
+    messageElement.textContent = "Motor command failed";
+    console.error("Motor command failed:", error);
+  }
+}
+
+function sendMotorCommand(cmd) {
+  if (sendWebSocketCommand(cmd)) {
+    return;
+  }
+
+  if (cmd.cmd === "speed") {
+    messageElement.textContent = "Using HTTP motor control";
+  } else {
+    messageElement.textContent = "WebSocket not connected, using HTTP";
+  }
+  sendHttpCommand(cmd);
+}
+
+function sendSpeedValue(speedValue) {
+  pendingSpeedValue = speedValue;
+
+  if (speedSendTimer) {
+    return;
+  }
+
+  speedSendTimer = setTimeout(() => {
+    speedSendTimer = null;
+
+    if (pendingSpeedValue === null) {
       return;
     }
 
-    const valueToSend = pendingPwmValue;
-    pendingPwmValue = null;
-    sendWebSocketCommand({ cmd: 'pwm', value: valueToSend });
+    const valueToSend = pendingSpeedValue;
+    pendingSpeedValue = null;
+    sendMotorCommand({ cmd: "speed", value: valueToSend });
   }, 30);
 }
 
 function sendOnCommand() {
   setButtonsDisabled(true);
-  messageElement.textContent = 'Turning LED ON...';
-  sendWebSocketCommand({ cmd: 'on' });
-  setTimeout(() => { setButtonsDisabled(false); }, 500);
+  messageElement.textContent = "Enabling motor...";
+  sendMotorCommand({ cmd: "on" });
+  setTimeout(() => {
+    setButtonsDisabled(false);
+  }, 500);
 }
 
 function sendOffCommand() {
   setButtonsDisabled(true);
-  messageElement.textContent = 'Turning LED OFF...';
-  sendWebSocketCommand({ cmd: 'off' });
-  setTimeout(() => { setButtonsDisabled(false); }, 500);
+  messageElement.textContent = "Stopping motor...";
+  updateMotorSpeedDisplay(0);
+  sendMotorCommand({ cmd: "off" });
+  setTimeout(() => {
+    setButtonsDisabled(false);
+  }, 500);
 }
-brightnessSlider.addEventListener("mousedown", () => {
+
+function sendJogCommand(direction) {
+  messageElement.textContent = `${direction.toUpperCase()} test...`;
+  sendMotorCommand({ cmd: "jog", direction, speed: 255, ms: 1200 });
+}
+
+motorSpeedSlider.addEventListener("mousedown", () => {
   isUserDragging = true;
 });
 
-brightnessSlider.addEventListener("touchstart", () => {
+motorSpeedSlider.addEventListener("touchstart", () => {
   isUserDragging = true;
 });
 
-brightnessSlider.addEventListener("mouseup", () => {
+motorSpeedSlider.addEventListener("mouseup", () => {
   isUserDragging = false;
 });
 
-brightnessSlider.addEventListener("touchend", () => {
+motorSpeedSlider.addEventListener("touchend", () => {
   isUserDragging = false;
 });
 
-brightnessSlider.addEventListener("input", (event) => {
+motorSpeedSlider.addEventListener("input", (event) => {
   const sliderValue = parseInt(event.target.value, 10);
-  updateBrightnessDisplay(sliderValue);
-  messageElement.textContent = "Adjusting brightness...";
-  
-  // Send immediate PWM update via WebSocket
-  sendPwmValue(sliderValue);
+  updateMotorSpeedDisplay(sliderValue);
+  messageElement.textContent = "Adjusting motor speed...";
+  sendSpeedValue(sliderValue);
 });
 
-brightnessSlider.addEventListener("change", (event) => {
+motorSpeedSlider.addEventListener("change", (event) => {
   const sliderValue = parseInt(event.target.value, 10);
-  sendPwmValue(sliderValue);
+  sendSpeedValue(sliderValue);
 });
 
-// Button event listeners
+document.getElementById("motor-on").addEventListener("click", sendOnCommand);
+document.getElementById("motor-off").addEventListener("click", sendOffCommand);
 document
-  .getElementById("led-on")
-  .addEventListener("click", sendOnCommand);
-
+  .getElementById("motor-test-ccw")
+  .addEventListener("click", () => sendJogCommand("ccw"));
 document
-  .getElementById("led-off")
-  .addEventListener("click", sendOffCommand);
+  .getElementById("motor-test-cw")
+  .addEventListener("click", () => sendJogCommand("cw"));
 
-// Initialize WebSocket on page load
 connectWebSocket();
 refreshWifiSignal();
 setInterval(refreshWifiSignal, 5000);

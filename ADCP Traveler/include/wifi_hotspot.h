@@ -4,35 +4,38 @@
 #include <Arduino.h>
 #include <ESPAsyncWebServer.h>
 
-#include "led_controller.h"
+#include "motor_controller.h"
 
 class WifiHotspot {
  public:
   WifiHotspot();
 
-  void begin(uint8_t ledPin = 2);
+  void begin(uint8_t rpwmPin = 25, uint8_t lpwmPin = 26, uint8_t renPin = 27,
+             uint8_t lenPin = 14);
   void update();
-  bool isLedOn() const;
+  bool isMotorEnabled() const;
   void handleWebSocketEvent(AsyncWebSocketClient* client, AwsEventType type,
                             uint8_t* data, size_t len);
 
  private:
-  uint8_t onboardLedPin_;
-  LedController ledController_;
+  MotorController motorController_;
   AsyncWebServer server_;
   AsyncWebSocket ws_;
+  unsigned long jogStopAtMs_;
 
-  void setLed(bool on);
-  void setPwm(uint8_t value);
-  void sendLedStateResponse(AsyncWebServerRequest* request);
+  void setMotorEnabled(bool enabled);
+  void setMotorSpeed(int speed);
+  void sendMotorStateResponse(AsyncWebServerRequest* request);
+  void broadcastMotorState();
   void sendWifiSignalResponse(AsyncWebServerRequest* request);
   bool serveFile(AsyncWebServerRequest* request, const char* path,
                  const char* contentType);
   void handleRoot(AsyncWebServerRequest* request);
-  void handleLedOn(AsyncWebServerRequest* request);
-  void handleLedOff(AsyncWebServerRequest* request);
-  void handleLedStatus(AsyncWebServerRequest* request);
-  void handleLedPwm(AsyncWebServerRequest* request);
+  void handleMotorOn(AsyncWebServerRequest* request);
+  void handleMotorOff(AsyncWebServerRequest* request);
+  void handleMotorStatus(AsyncWebServerRequest* request);
+  void handleMotorSpeed(AsyncWebServerRequest* request);
+  void handleMotorJog(AsyncWebServerRequest* request);
   void handleWifiSignal(AsyncWebServerRequest* request);
   void handleNotFound(AsyncWebServerRequest* request);
 };

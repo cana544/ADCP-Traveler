@@ -5,12 +5,15 @@
 
 namespace Config {
 namespace Wifi {
-constexpr char AP_SSID[] = "ESP32-LED-Control";
+constexpr char AP_SSID[] = "ESP32-Motor-Control";
 constexpr char AP_PASSWORD[] = "password";
 }  // namespace Wifi
 
 namespace Pins {
-constexpr uint8_t ONBOARD_LED = 4;
+constexpr uint8_t MOTOR_RPWM = 25;
+constexpr uint8_t MOTOR_LPWM = 26;
+constexpr uint8_t MOTOR_REN = 27;
+constexpr uint8_t MOTOR_LEN = 14;
 }
 
 namespace Files {

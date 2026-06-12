@@ -8,22 +8,25 @@
       name="apple-mobile-web-app-status-bar-style"
       content="black-translucent"
     />
-    <title>ESP32 LED Control</title>
-    <link rel="stylesheet" href="/style.css" />
+    <meta http-equiv="Cache-Control" content="no-store" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <title>ESP32 Motor Control</title>
+    <link rel="stylesheet" href="/style.css?v=motor-2" />
   </head>
   <body>
     <main class="app-shell">
       <section class="control-card">
-        <p class="eyebrow">ESP32 Control Page</p>
-        <h1>LED Switch</h1>
+        <p class="eyebrow">ADCP Traveller Project</p>
+        <h1>Motor Control</h1>
         <p class="description">
-          Use the buttons below to send HTTP commands to the ESP32 and control
-          the LED.
+          Use the centered slider to control the motor direction and
+          speed.
         </p>
 
         <div class="status-panel">
           <span class="status-label">Current state</span>
-          <span id="led-state" class="status-value status-off">OFF</span>
+          <span id="motor-state" class="status-value status-off">OFF</span>
         </div>
 
         <div class="status-panel">
@@ -39,29 +42,44 @@
           </div>
         </div>
 
-        <div class="brightness-control">
-          <div class="brightness-header">
-            <span class="brightness-icon" aria-hidden="true">💡</span>
-            <span class="brightness-label">Brightness</span>
-            <span id="brightness-value" class="brightness-percentage">0%</span>
+        <div class="motor-control" data-direction="stop">
+          <div class="motor-header">
+            <span class="motor-icon" aria-hidden="true">M</span>
+            <span class="motor-label">Motor speed</span>
+            <span id="motor-speed-value" class="motor-percentage">STOP</span>
           </div>
           <input
-            id="brightness-slider"
+            id="motor-speed-slider"
             type="range"
-            min="0"
+            min="-255"
             max="255"
             value="0"
-            class="brightness-slider"
-            aria-label="Brightness level"
+            step="1"
+            class="motor-slider"
+            aria-label="Motor speed and direction"
           />
+          <div class="direction-labels" aria-hidden="true">
+            <span>CCW</span>
+            <span>STOP</span>
+            <span>CW</span>
+          </div>
         </div>
 
         <div class="button-row">
-          <button id="led-on" class="action-button action-on" type="button">
-            LED ON
+          <button id="motor-on" class="action-button action-on" type="button">
+            MOTOR ON
           </button>
-          <button id="led-off" class="action-button action-off" type="button">
-            LED OFF
+          <button id="motor-off" class="action-button action-off" type="button">
+            MOTOR STOP
+          </button>
+        </div>
+
+        <div class="button-row jog-row">
+          <button id="motor-test-ccw" class="action-button action-jog-ccw" type="button">
+            CCW TEST
+          </button>
+          <button id="motor-test-cw" class="action-button action-jog-cw" type="button">
+            CW TEST
           </button>
         </div>
 
@@ -69,6 +87,6 @@
       </section>
     </main>
 
-    <script src="/script.js"></script>
+    <script src="/script.js?v=motor-2"></script>
   </body>
 </html>
