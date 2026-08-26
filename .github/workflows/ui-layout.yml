@@ -1,0 +1,15 @@
+name: UI layout contract
+
+on:
+  push:
+    branches:
+      - feature/concept-ui-redesign
+  pull_request:
+
+jobs:
+  ui-layout:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check concept UI contract
+        run: node "ADCP Traveler/test/ui_layout_check.js"
