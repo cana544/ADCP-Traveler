@@ -77,12 +77,14 @@ function setButtonsDisabled(disabled) {
 }
 
 function updateGaugeKnob(speed) {
-  const normalised = (speed + 255) / 510;
-  const angle = Math.PI * (1 - normalised);
-  const x = 50 + 44 * Math.cos(angle);
-  const y = 84 - 64 * Math.sin(angle);
-  motorControl.style.setProperty("--knob-x", `${x.toFixed(2)}%`);
-  motorControl.style.setProperty("--knob-y", `${y.toFixed(2)}%`);
+  const t = (speed + 255) / 510;
+  const oneMinusT = 1 - t;
+  const svgX = oneMinusT * oneMinusT * 28 + 2 * oneMinusT * t * 300 + t * t * 572;
+  const svgY = oneMinusT * oneMinusT * 220 + 2 * oneMinusT * t * -55 + t * t * 220;
+  const xPercent = (svgX / 600) * 100;
+  const yPercent = ((10 + (svgY / 250) * 235) / 330) * 100;
+  motorControl.style.setProperty("--knob-x", `${xPercent.toFixed(2)}%`);
+  motorControl.style.setProperty("--knob-y", `${yPercent.toFixed(2)}%`);
 }
 
 function updateMotorSpeedDisplay(speed) {
