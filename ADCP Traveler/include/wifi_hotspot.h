@@ -4,6 +4,8 @@
 #include <Arduino.h>
 #include <ESPAsyncWebServer.h>
 
+#include "distance_controller.h"
+#include "encoder.h"
 #include "motor_controller.h"
 
 class WifiHotspot {
@@ -19,12 +21,28 @@ class WifiHotspot {
 
  private:
   MotorController motorController_;
+  Encoder encoder_;
+  DistanceController distanceController_;
   AsyncWebServer server_;
   AsyncWebSocket ws_;
 
+  int pendingManualSpeed_;
+  bool manualReversalPending_;
+  uint32_t lastControlUs_;
+  uint32_t lastStateBroadcastMs_;
+
   void setMotorEnabled(bool enabled);
   void setMotorSpeed(int speed);
+  void applyManualSpeed(int speed);
+  void updatePendingManualReversal();
+  void cancelDistanceForManualControl();
+  bool startDistanceMove(float distanceCm, int direction);
+  void stopDistanceMove();
+  bool zeroPosition();
+
   void sendMotorStateResponse(AsyncWebServerRequest* request);
+  void sendDistanceStateResponse(AsyncWebServerRequest* request);
+  void appendStateJson(JsonDocument& response) const;
   void broadcastMotorState();
   void sendWifiSignalResponse(AsyncWebServerRequest* request);
   bool serveFile(AsyncWebServerRequest* request, const char* path,
@@ -34,6 +52,10 @@ class WifiHotspot {
   void handleMotorOff(AsyncWebServerRequest* request);
   void handleMotorStatus(AsyncWebServerRequest* request);
   void handleMotorSpeed(AsyncWebServerRequest* request);
+  void handleDistanceStart(AsyncWebServerRequest* request);
+  void handleDistanceStop(AsyncWebServerRequest* request);
+  void handleDistanceZero(AsyncWebServerRequest* request);
+  void handleDistanceStatus(AsyncWebServerRequest* request);
   void handleWifiSignal(AsyncWebServerRequest* request);
   void handleNotFound(AsyncWebServerRequest* request);
 };
