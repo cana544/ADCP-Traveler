@@ -4,15 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta
-      name="apple-mobile-web-app-status-bar-style"
-      content="black-translucent"
-    />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta http-equiv="Cache-Control" content="no-store" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <title>Gauge Glide</title>
-    <link rel="stylesheet" href="/style.css?v=motor-2" />
+    <link rel="stylesheet" href="/style.css?v=distance-1" />
   </head>
   <body>
     <main class="app-shell">
@@ -22,10 +19,7 @@
             <div class="control-card">
               <p class="eyebrow">Gauge Glide Traveller</p>
               <h1>Speed Control</h1>
-              <p class="description">
-                Use the slider to control the traveller's direction and
-                speed.
-              </p>
+              <p class="description">Use the slider to control the traveller's direction and speed.</p>
 
               <div class="status-panel">
                 <span class="status-label">Current state</span>
@@ -51,16 +45,7 @@
                   <span class="motor-label">Motor speed</span>
                   <span id="motor-speed-value" class="motor-percentage">STOP</span>
                 </div>
-                <input
-                  id="motor-speed-slider"
-                  type="range"
-                  min="-255"
-                  max="255"
-                  value="0"
-                  step="1"
-                  class="motor-slider"
-                  aria-label="Motor speed and direction"
-                />
+                <input id="motor-speed-slider" type="range" min="-255" max="255" value="0" step="1" class="motor-slider" aria-label="Motor speed and direction" />
                 <div class="direction-labels" aria-hidden="true">
                   <span>CCW</span>
                   <span>STOP</span>
@@ -69,12 +54,8 @@
               </div>
 
               <div class="button-row">
-                <button id="motor-on" class="action-button action-on" type="button">
-                   ON
-                </button>
-                <button id="motor-off" class="action-button action-off" type="button">
-                   STOP
-                </button>
+                <button id="motor-on" class="action-button action-on" type="button">ON</button>
+                <button id="motor-off" class="action-button action-off" type="button">STOP</button>
               </div>
 
               <p id="message" class="message" aria-live="polite"></p>
@@ -84,30 +65,45 @@
           <section class="app-page">
             <div class="control-card distance-card">
               <p class="eyebrow">Gauge Glide Traveller</p>
-              <h1>Intermittent Distance Control</h1>
+              <h1>Distance Control</h1>
+
+              <div class="status-panel">
+                <span class="status-label">Current position</span>
+                <span id="distance-position" class="status-value">0.0 cm</span>
+              </div>
+
+              <div class="status-panel">
+                <span class="status-label">Status</span>
+                <span id="distance-status" class="status-value">IDLE</span>
+              </div>
+
+              <label class="distance-label" for="distance-input">Distance</label>
+              <div class="distance-input-row">
+                <input id="distance-input" class="distance-input" type="number" min="0.1" step="0.1" inputmode="decimal" placeholder="500" />
+                <span class="distance-unit">cm</span>
+              </div>
+
+              <div class="button-row direction-select-row">
+                <button id="distance-cw" class="action-button direction-button" type="button">CW</button>
+                <button id="distance-ccw" class="action-button direction-button" type="button">CCW</button>
+              </div>
+
+              <button id="distance-start" class="action-button action-on distance-wide-button" type="button">START</button>
+              <button id="distance-stop" class="action-button action-off distance-wide-button" type="button">STOP</button>
+              <button id="distance-zero" class="action-button distance-zero-button distance-wide-button" type="button">ZERO</button>
+
+              <p id="distance-message" class="message" aria-live="polite"></p>
             </div>
           </section>
         </div>
       </div>
 
       <div class="page-dots" aria-label="Page selector">
-        <button
-          class="page-dot active"
-          type="button"
-          data-page="0"
-          aria-label="Motor control page"
-          aria-current="true"
-        ></button>
-        <button
-          class="page-dot"
-          type="button"
-          data-page="1"
-          aria-label="Distance control page"
-          aria-current="false"
-        ></button>
+        <button class="page-dot active" type="button" data-page="0" aria-label="Motor control page" aria-current="true"></button>
+        <button class="page-dot" type="button" data-page="1" aria-label="Distance control page" aria-current="false"></button>
       </div>
     </main>
 
-    <script src="/script.js?v=motor-2"></script>
+    <script src="/script.js?v=distance-1"></script>
   </body>
 </html>
