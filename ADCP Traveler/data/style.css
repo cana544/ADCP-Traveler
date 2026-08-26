@@ -28,7 +28,27 @@ body {
   min-height: 100vh;
   display: grid;
   place-items: center;
+  overflow: hidden;
   padding: 24px;
+  position: relative;
+}
+
+.page-window {
+  width: 100%;
+  overflow: hidden;
+  touch-action: pan-y;
+}
+
+.page-track {
+  display: flex;
+  width: 200%;
+  transition: transform 0.28s ease;
+}
+
+.app-page {
+  width: 50%;
+  display: grid;
+  place-items: center;
 }
 
 .control-card {
@@ -38,6 +58,36 @@ body {
   background: var(--card);
   box-shadow: 0 20px 45px var(--shadow);
   border: 1px solid var(--border);
+}
+
+.distance-card {
+  min-height: 520px;
+}
+
+.page-dots {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  left: 0;
+  position: absolute;
+  right: 0;
+  bottom: 18px;
+}
+
+.page-dot {
+  width: 9px;
+  height: 9px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(82, 96, 109, 0.32);
+  cursor: pointer;
+  transition: background-color 0.18s ease, transform 0.18s ease;
+}
+
+.page-dot.active {
+  background: var(--text);
+  transform: scale(1.22);
 }
 
 .eyebrow {

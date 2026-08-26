@@ -11,71 +11,101 @@
     <meta http-equiv="Cache-Control" content="no-store" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
-    <title>ESP32 Motor Control</title>
+    <title>Gauge Glide</title>
     <link rel="stylesheet" href="/style.css?v=motor-2" />
   </head>
   <body>
     <main class="app-shell">
-      <section class="control-card">
-        <p class="eyebrow">ADCP Traveller Project</p>
-        <h1>Motor Control</h1>
-        <p class="description">
-          Use the centered slider to control the motor direction and
-          speed.
-        </p>
+      <div class="page-window" id="page-window">
+        <div class="page-track" id="page-track">
+          <section class="app-page">
+            <div class="control-card">
+              <p class="eyebrow">Gauge Glide Traveller</p>
+              <h1>Speed Control</h1>
+              <p class="description">
+                Use the slider to control the traveller's direction and
+                speed.
+              </p>
 
-        <div class="status-panel">
-          <span class="status-label">Current state</span>
-          <span id="motor-state" class="status-value status-off">OFF</span>
+              <div class="status-panel">
+                <span class="status-label">Current state</span>
+                <span id="motor-state" class="status-value status-off">OFF</span>
+              </div>
+
+              <div class="status-panel">
+                <span class="status-label">Wi-Fi signal</span>
+                <div class="signal-status">
+                  <span id="wifi-bars" class="wifi-bars" aria-hidden="true">
+                    <span class="wifi-bar"></span>
+                    <span class="wifi-bar"></span>
+                    <span class="wifi-bar"></span>
+                    <span class="wifi-bar"></span>
+                  </span>
+                  <span id="wifi-signal" class="status-value">Checking...</span>
+                </div>
+              </div>
+
+              <div class="motor-control" data-direction="stop">
+                <div class="motor-header">
+                  <span class="motor-icon" aria-hidden="true">M</span>
+                  <span class="motor-label">Motor speed</span>
+                  <span id="motor-speed-value" class="motor-percentage">STOP</span>
+                </div>
+                <input
+                  id="motor-speed-slider"
+                  type="range"
+                  min="-255"
+                  max="255"
+                  value="0"
+                  step="1"
+                  class="motor-slider"
+                  aria-label="Motor speed and direction"
+                />
+                <div class="direction-labels" aria-hidden="true">
+                  <span>CCW</span>
+                  <span>STOP</span>
+                  <span>CW</span>
+                </div>
+              </div>
+
+              <div class="button-row">
+                <button id="motor-on" class="action-button action-on" type="button">
+                   ON
+                </button>
+                <button id="motor-off" class="action-button action-off" type="button">
+                   STOP
+                </button>
+              </div>
+
+              <p id="message" class="message" aria-live="polite"></p>
+            </div>
+          </section>
+
+          <section class="app-page">
+            <div class="control-card distance-card">
+              <p class="eyebrow">Gauge Glide Traveller</p>
+              <h1>Intermittent Distance Control</h1>
+            </div>
+          </section>
         </div>
+      </div>
 
-        <div class="status-panel">
-          <span class="status-label">Wi-Fi signal</span>
-          <div class="signal-status">
-            <span id="wifi-bars" class="wifi-bars" aria-hidden="true">
-              <span class="wifi-bar"></span>
-              <span class="wifi-bar"></span>
-              <span class="wifi-bar"></span>
-              <span class="wifi-bar"></span>
-            </span>
-            <span id="wifi-signal" class="status-value">Checking...</span>
-          </div>
-        </div>
-
-        <div class="motor-control" data-direction="stop">
-          <div class="motor-header">
-            <span class="motor-icon" aria-hidden="true">M</span>
-            <span class="motor-label">Motor speed</span>
-            <span id="motor-speed-value" class="motor-percentage">STOP</span>
-          </div>
-          <input
-            id="motor-speed-slider"
-            type="range"
-            min="-255"
-            max="255"
-            value="0"
-            step="1"
-            class="motor-slider"
-            aria-label="Motor speed and direction"
-          />
-          <div class="direction-labels" aria-hidden="true">
-            <span>CCW</span>
-            <span>STOP</span>
-            <span>CW</span>
-          </div>
-        </div>
-
-        <div class="button-row">
-          <button id="motor-on" class="action-button action-on" type="button">
-            MOTOR ON
-          </button>
-          <button id="motor-off" class="action-button action-off" type="button">
-            MOTOR STOP
-          </button>
-        </div>
-
-        <p id="message" class="message" aria-live="polite"></p>
-      </section>
+      <div class="page-dots" aria-label="Page selector">
+        <button
+          class="page-dot active"
+          type="button"
+          data-page="0"
+          aria-label="Motor control page"
+          aria-current="true"
+        ></button>
+        <button
+          class="page-dot"
+          type="button"
+          data-page="1"
+          aria-label="Distance control page"
+          aria-current="false"
+        ></button>
+      </div>
     </main>
 
     <script src="/script.js?v=motor-2"></script>

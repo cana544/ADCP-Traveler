@@ -6,12 +6,63 @@ const motorSpeedSlider = document.getElementById("motor-speed-slider");
 const motorSpeedValue = document.getElementById("motor-speed-value");
 const motorControl = document.querySelector(".motor-control");
 const buttons = Array.from(document.querySelectorAll(".action-button"));
+const pageWindow = document.getElementById("page-window");
+const pageTrack = document.getElementById("page-track");
+const pageDots = Array.from(document.querySelectorAll(".page-dot"));
 
 let currentSpeed = 0;
 let isUserDragging = false;
 let ws = null;
 let speedSendTimer = null;
 let pendingSpeedValue = null;
+let currentPage = 0;
+let swipeStartX = 0;
+let swipeStartY = 0;
+let isSwiping = false;
+
+function showPage(pageIndex) {
+  currentPage = Math.max(0, Math.min(pageDots.length - 1, pageIndex));
+  pageTrack.style.transform = `translateX(-${currentPage * 50}%)`;
+
+  pageDots.forEach((dot, index) => {
+    const active = index === currentPage;
+    dot.classList.toggle("active", active);
+    dot.setAttribute("aria-current", active ? "true" : "false");
+  });
+}
+
+function handleSwipeStart(event) {
+  if (event.target.closest("input, button")) {
+    isSwiping = false;
+    return;
+  }
+
+  const point = event.touches ? event.touches[0] : event;
+  swipeStartX = point.clientX;
+  swipeStartY = point.clientY;
+  isSwiping = true;
+}
+
+function handleSwipeEnd(event) {
+  if (!isSwiping) {
+    return;
+  }
+
+  const point = event.changedTouches ? event.changedTouches[0] : event;
+  const deltaX = point.clientX - swipeStartX;
+  const deltaY = point.clientY - swipeStartY;
+  isSwiping = false;
+
+  if (Math.abs(deltaX) < 50 || Math.abs(deltaX) < Math.abs(deltaY)) {
+    return;
+  }
+
+  if (deltaX < 0) {
+    showPage(currentPage + 1);
+  } else {
+    showPage(currentPage - 1);
+  }
+}
 
 function setButtonsDisabled(disabled) {
   buttons.forEach((button) => {
@@ -253,6 +304,18 @@ motorSpeedSlider.addEventListener("change", (event) => {
 document.getElementById("motor-on").addEventListener("click", sendOnCommand);
 document.getElementById("motor-off").addEventListener("click", sendOffCommand);
 
+pageWindow.addEventListener("touchstart", handleSwipeStart, { passive: true });
+pageWindow.addEventListener("touchend", handleSwipeEnd);
+pageWindow.addEventListener("mousedown", handleSwipeStart);
+pageWindow.addEventListener("mouseup", handleSwipeEnd);
+
+pageDots.forEach((dot) => {
+  dot.addEventListener("click", () => {
+    showPage(parseInt(dot.dataset.page, 10));
+  });
+});
+
+showPage(0);
 connectWebSocket();
 refreshWifiSignal();
 setInterval(refreshWifiSignal, 5000);
