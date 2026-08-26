@@ -76,6 +76,8 @@ rect {
   overflow: hidden;
   position: relative;
   border: 1px solid rgba(255, 255, 255, 0.45);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
 }
 
 .app-header {
@@ -88,73 +90,31 @@ rect {
   background: linear-gradient(90deg, var(--header-start) 0%, var(--header-mid) 53%, var(--header-end) 100%);
 }
 
-.brand-block,
-.brand-lockup {
+.brand-block {
   display: flex;
   align-items: center;
 }
 
 .brand-block {
-  gap: 26px;
+  gap: 24px;
   min-width: 0;
 }
 
-.brand-lockup {
-  gap: 14px;
-}
-
-.brand-mark {
+.brand-logo {
   flex: 0 0 auto;
-  width: 56px;
-  height: 56px;
+  width: auto;
+  height: 52px;
+  max-width: min(54vw, 300px);
+  object-fit: contain;
 }
 
-.brand-mark svg {
-  width: 100%;
-  height: 100%;
-}
-
-.brand-mark path:first-child {
-  fill: none;
-  stroke: #ffffff;
-  stroke-width: 3;
-  stroke-linejoin: round;
-}
-
-.brand-mark-detail {
-  fill: none;
-  stroke: rgba(255, 255, 255, 0.92);
-  stroke-width: 2.6;
-  stroke-linecap: round;
-}
-
-.brand-copy,
 .product-copy {
   min-width: 0;
 }
 
-.brand-line,
 .product-title,
 .product-subtitle {
   margin: 0;
-}
-
-.brand-line-small {
-  font-size: 0.84rem;
-  line-height: 1.05;
-  letter-spacing: 0.07em;
-}
-
-.brand-line-large {
-  font-size: 1.5rem;
-  line-height: 1.05;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-}
-
-.brand-line.spaced {
-  margin-top: 4px;
-  letter-spacing: 0.42em;
 }
 
 .brand-divider {
@@ -237,21 +197,27 @@ rect {
 
 .page-viewport {
   overflow: hidden;
+  min-height: 0;
 }
 
 .page-track {
   display: flex;
   width: 200%;
+  height: 100%;
   transition: transform 0.34s ease;
 }
 
 .app-page {
   width: 50%;
   flex: 0 0 50%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .page-content {
   padding: 34px 38px 28px;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .hero-row {
@@ -486,11 +452,6 @@ h2 {
   left: 6px;
 }
 
-.arc-axis-centre {
-  left: 50%;
-  transform: translateX(-50%);
-}
-
 .arc-axis-right {
   right: 6px;
 }
@@ -608,8 +569,19 @@ h2 {
   align-items: stretch;
 }
 
+.distance-field-block {
+  display: grid;
+  grid-template-rows: 42px auto;
+}
+
+.travelled-block {
+  display: grid;
+  grid-template-rows: 42px auto;
+}
+
 .distance-field-label {
-  margin: 0 0 14px;
+  align-self: center;
+  margin: 0;
   font-size: 1rem;
   color: var(--text);
 }
@@ -647,16 +619,13 @@ h2 {
 }
 
 .travelled-block {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  align-items: flex-end;
+  justify-items: end;
   min-width: 170px;
-  padding: 8px 6px 8px 0;
+  padding: 0 6px 8px 0;
 }
 
 .travelled-value {
-  margin: 18px 0 0;
+  margin: 0;
   font-size: clamp(2rem, 3.2vw, 2.9rem);
   font-weight: 700;
   color: var(--green-strong);
@@ -680,7 +649,7 @@ h2 {
 }
 
 .message:empty {
-  visibility: hidden;
+  display: none;
 }
 
 .connection-note {
@@ -783,13 +752,13 @@ h2 {
   }
 
   .travelled-block {
-    align-items: flex-start;
+    justify-items: start;
     min-width: 0;
     padding: 0;
   }
 
   .travelled-value {
-    margin-top: 10px;
+    margin-top: 0;
   }
 }
 
@@ -800,50 +769,43 @@ h2 {
 
   .page-window {
     width: 100%;
+    height: 100dvh;
     min-height: 100vh;
     border-radius: 0;
     box-shadow: none;
     border: none;
   }
 
+  .page-viewport {
+    min-height: 0;
+  }
+
   .app-header {
-    gap: 18px;
-    padding: 20px 18px;
+    gap: 12px;
+    padding: 12px 14px;
   }
 
   .brand-block {
-    gap: 14px;
-    align-items: flex-start;
-    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: nowrap;
   }
 
   .brand-divider {
     display: none;
   }
 
-  .brand-mark {
-    width: 42px;
-    height: 42px;
-  }
-
-  .brand-line-small {
-    font-size: 0.66rem;
-  }
-
-  .brand-line-large {
-    font-size: 1.12rem;
-  }
-
-  .brand-line.spaced {
-    letter-spacing: 0.3em;
+  .brand-logo {
+    height: 28px;
+    max-width: 48vw;
   }
 
   .product-title {
-    font-size: 1.02rem;
+    font-size: 0.92rem;
   }
 
   .product-subtitle {
-    font-size: 0.78rem;
+    font-size: 0.7rem;
     margin-top: 3px;
   }
 
@@ -868,35 +830,36 @@ h2 {
   }
 
   .page-content {
-    padding: 24px 18px 22px;
+    padding: 10px 12px 8px;
   }
 
   .hero-row {
     flex-direction: column;
     align-items: stretch;
+    gap: 6px;
   }
 
   h1 {
-    font-size: 2.45rem;
+    font-size: 1.75rem;
   }
 
   .page-subtitle {
-    margin-top: 10px;
-    font-size: 0.95rem;
+    margin-top: 5px;
+    font-size: 0.84rem;
   }
 
   .system-toggle {
     min-width: 0;
     width: 100%;
-    padding: 18px 20px;
-    border-radius: 18px;
+    padding: 8px 12px;
+    border-radius: 14px;
   }
 
   .status-card,
   .distance-panel {
-    margin-top: 20px;
-    padding: 14px;
-    border-radius: 18px;
+    margin-top: 6px;
+    padding: 7px;
+    border-radius: 14px;
   }
 
   .status-card-two,
@@ -910,17 +873,17 @@ h2 {
   }
 
   .status-item {
-    padding: 4px 6px;
-    gap: 14px;
+    padding: 2px 4px;
+    gap: 8px;
   }
 
   .status-icon {
-    width: 42px;
-    height: 42px;
+    width: 30px;
+    height: 30px;
   }
 
   .status-icon-motor {
-    font-size: 1.4rem;
+    font-size: 1rem;
   }
 
   .status-label,
@@ -931,20 +894,33 @@ h2 {
   .system-toggle-label,
   .section-emphasis,
   h2 {
-    font-size: 0.96rem;
+    font-size: 0.82rem;
+  }
+
+  .status-value {
+    margin-top: 2px;
+  }
+
+  .distance-field-block,
+  .travelled-block {
+    grid-template-rows: 32px auto;
+  }
+
+  .distance-field-label {
+    line-height: 1.1;
   }
 
   .control-section {
-    margin-top: 24px;
+    margin-top: 8px;
   }
 
   .arc-widget {
-    min-height: 290px;
-    margin-top: 14px;
+    min-height: 180px;
+    margin-top: 6px;
   }
 
   .arc-percentage {
-    font-size: 2.7rem;
+    font-size: 2.2rem;
   }
 
   .arc-caption {
@@ -952,17 +928,12 @@ h2 {
     font-size: 0.88rem;
   }
 
-  .arc-axis-label {
-    font-size: 0.86rem;
-    bottom: 0;
-  }
-
   .action-button {
-    min-height: 72px;
-    padding: 18px 16px;
-    border-radius: 18px;
-    gap: 12px;
-    font-size: 1rem;
+    min-height: 48px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    gap: 8px;
+    font-size: 0.9rem;
   }
 
   .button-icon {
@@ -972,21 +943,31 @@ h2 {
 
   .button-stack,
   .button-row {
-    gap: 12px;
+    gap: 6px;
   }
 
   .direction-row {
-    margin-top: 20px;
+    margin-top: 8px;
+  }
+
+  .distance-columns {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+  }
+
+  .travelled-block {
+    justify-items: end;
+    min-width: 92px;
   }
 
   .distance-input-wrapper {
-    min-height: 84px;
-    padding: 0 14px;
+    min-height: 56px;
+    padding: 0 10px;
     gap: 8px;
   }
 
   .distance-input {
-    font-size: 2.55rem;
+    font-size: 1.9rem;
   }
 
   .distance-unit {
@@ -994,7 +975,7 @@ h2 {
   }
 
   .travelled-value {
-    font-size: 2rem;
+    font-size: 1.25rem;
   }
 
   .bottom-nav {
@@ -1003,14 +984,14 @@ h2 {
   }
 
   .nav-button {
-    min-height: 118px;
-    gap: 10px;
-    padding: 16px 12px 18px;
-    font-size: 0.88rem;
+    min-height: 58px;
+    gap: 4px;
+    padding: 7px 8px 8px;
+    font-size: 0.78rem;
   }
 
   .nav-icon {
-    width: 34px;
-    height: 34px;
+    width: 26px;
+    height: 26px;
   }
 }

@@ -5,7 +5,6 @@ const connectionMessageElements = Array.from(document.querySelectorAll('.connect
 const motorSpeedSlider = document.getElementById('motor-speed-slider');
 const motorSpeedValue = document.getElementById('motor-speed-value');
 const motorSpeedPercent = document.getElementById('motor-speed-percent');
-const motorDirectionDisplay = document.getElementById('motor-direction-display');
 const motorControl = document.getElementById('motor-arc-control');
 const motorArcSvg = document.getElementById('motor-arc-svg');
 const motorArcKnob = document.getElementById('motor-arc-knob');
@@ -137,7 +136,6 @@ function updateMotorSpeedDisplay(speed) {
 
   motorSpeedValue.textContent = currentSpeed === 0 ? 'STOP' : direction;
   motorSpeedPercent.textContent = `${percentage}%`;
-  motorDirectionDisplay.textContent = direction;
   motorControl.dataset.direction = direction.toLowerCase();
   positionArcKnob(currentSpeed);
 
@@ -289,13 +287,6 @@ function setButtonsDisabled(disabled) {
   actionButtons.forEach((button) => {
     if (button !== distanceStopButton) button.disabled = disabled;
   });
-
-  motorArcHitArea.tabIndex = disabled ? -1 : 0;
-  if (disabled) {
-    motorArcHitArea.setAttribute('aria-disabled', 'true');
-  } else {
-    motorArcHitArea.removeAttribute('aria-disabled');
-  }
 }
 
 function connectWebSocket() {
@@ -444,7 +435,6 @@ function updateArcFromPointerEvent(event) {
 }
 
 function beginArcDrag(event) {
-  if (motorArcHitArea.getAttribute('aria-disabled') === 'true') return;
   isUserDragging = true;
   event.preventDefault();
   motorArcHitArea.setPointerCapture(event.pointerId);
@@ -469,8 +459,6 @@ function endArcDrag(event) {
 }
 
 function handleArcKeydown(event) {
-  if (motorArcHitArea.getAttribute('aria-disabled') === 'true') return;
-
   let nextSpeed = currentSpeed;
   const coarseStep = 25;
   const fineStep = 5;

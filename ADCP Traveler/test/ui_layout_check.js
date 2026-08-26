@@ -4,6 +4,8 @@ const path = require("path");
 const root = path.resolve(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "data", "index.html"), "utf8");
 const css = fs.readFileSync(path.join(root, "data", "style.css"), "utf8");
+const script = fs.readFileSync(path.join(root, "data", "script.js"), "utf8");
+const logoPath = path.join(root, "data", "uoa-logo-white.png");
 
 function fail(message) {
   console.error(message);
@@ -33,9 +35,7 @@ function mediaBody(query) {
   for (let index = blockStart; index < css.length; index++) {
     if (css[index] === "{") depth++;
     if (css[index] === "}") depth--;
-    if (depth === 0) {
-      return css.slice(blockStart + 1, index);
-    }
+    if (depth === 0) return css.slice(blockStart + 1, index);
   }
   return "";
 }
@@ -50,115 +50,94 @@ function mediaHasDeclaration(query, selector, property, expected) {
   return new RegExp(`${escapedProperty}\\s*:\\s*${escapedExpected}\\s*;`).test(match[1]);
 }
 
-if (!html.includes('<div class="page-window" id="page-window">')) {
-  fail("Expected the carousel page window to wrap both control pages.");
+if (!fs.existsSync(logoPath)) {
+  fail("Expected a local University of Auckland logo asset for ESP32 preview use.");
 }
 
-if (!html.includes('<div class="page-viewport">')) {
-  fail("Expected an inner clipped page viewport so adjacent slides cannot bleed through card padding.");
+if (!html.includes('src="/uoa-logo-white.png"')) {
+  fail("Expected the header to render the inverted University of Auckland PNG logo asset.");
 }
 
-if (!hasDeclaration(".page-window", "background", "var(--card)")) {
-  fail("Expected .page-window to be the shared white panel background.");
+if (!hasDeclaration(".brand-logo", "height", "52px")) {
+  fail("Expected the logo to be sized cleanly in the desktop header.");
 }
 
-if (!hasDeclaration(".page-window", "width", "min(100%, 460px)")) {
-  fail("Expected .page-window to use the same fixed responsive width for both pages.");
+if (!hasDeclaration(".distance-field-block", "display", "grid")) {
+  fail("Expected target distance label and input to use a grid for vertical alignment.");
 }
 
-if (!hasDeclaration(".page-window", "position", "relative")) {
-  fail("Expected .page-window to anchor the page dots inside the white panel.");
+if (!hasDeclaration(".travelled-block", "display", "grid")) {
+  fail("Expected travelled text to align with the target distance label row.");
 }
 
-if (!hasDeclaration(".page-viewport", "overflow", "hidden")) {
-  fail("Expected .page-viewport to clip the sliding pages.");
+if (!hasDeclaration(".distance-field-label", "align-self", "center")) {
+  fail("Expected target distance and travelled labels to be centred above the input row.");
 }
 
-if (hasDeclaration(".page-window", "overflow", "hidden")) {
-  fail("Expected .page-window not to be the clipping viewport because its padding reveals adjacent pages.");
+if (!mediaHasDeclaration("(max-width: 640px)", ".app-header", "padding", "12px 14px")) {
+  fail("Expected iPhone header padding to be compact.");
 }
 
-if (!hasDeclaration(".control-card", "height", "100%")) {
-  fail("Expected each page's content box to stretch to the shared panel height.");
+if (!mediaHasDeclaration("(max-width: 640px)", ".page-window", "height", "100dvh")) {
+  fail("Expected mobile page window to fit exactly within an iPhone viewport.");
 }
 
-if (!hasDeclaration(".app-page", "flex", "0 0 50%")) {
-  fail("Expected each carousel page to have a fixed non-shrinking width.");
+if (!mediaHasDeclaration("(max-width: 640px)", ".page-viewport", "min-height", "0")) {
+  fail("Expected mobile page viewport to shrink within the app shell.");
 }
 
-if (!hasDeclaration(".app-page", "overflow", "hidden")) {
-  fail("Expected each carousel page to clip adjacent page controls at the boundary.");
+if (!mediaHasDeclaration("(max-width: 640px)", ".brand-logo", "height", "28px")) {
+  fail("Expected the logo to fit in an iPhone header.");
 }
 
-if (!hasDeclaration(".page-dots", "position", "absolute")) {
-  fail("Expected page dots to be absolutely positioned inside the shared panel.");
+if (!mediaHasDeclaration("(max-width: 640px)", ".page-content", "padding", "10px 12px 8px")) {
+  fail("Expected page content padding to fit iPhone screens.");
 }
 
-if (!hasDeclaration(".page-dots", "bottom", "18px")) {
-  fail("Expected page dots to sit at the bottom inside the shared panel.");
+if (!mediaHasDeclaration("(max-width: 640px)", ".arc-widget", "min-height", "180px")) {
+  fail("Expected the speed control arc to fit iPhone screens.");
 }
 
-const wifiPanelCount = (html.match(/class="status-panel wifi-panel"/g) || []).length;
-if (wifiPanelCount !== 2) {
-  fail("Expected both Speed Control and Distance Control pages to show a Wi-Fi signal panel.");
+if (!html.includes('<div class="arc-axis-label arc-axis-left">CCW</div>')) {
+  fail("Expected the speed control page to keep the CCW side indicator label.");
 }
 
-const motorStateCount = (html.match(/motor-state-value/g) || []).length;
-if (motorStateCount !== 2) {
-  fail("Expected both pages to show the same current-state UI.");
+if (!html.includes('<div class="arc-axis-label arc-axis-right">CW</div>')) {
+  fail("Expected the speed control page to keep the CW side indicator label.");
 }
 
-const connectionMessageCount = (html.match(/class="message connection-message"/g) || []).length;
-if (connectionMessageCount !== 2) {
-  fail("Expected both pages to show the same connection status message.");
+if (html.includes("arc-axis-centre") || html.includes("motor-direction-display")) {
+  fail("Expected the speed control page to omit only the middle STOP direction indicator.");
 }
 
-if (!html.includes('id="distance-connection-message"')) {
-  fail("Expected the distance page to include its own connection status message.");
+if (!mediaHasDeclaration("(max-width: 640px)", ".nav-button", "min-height", "58px")) {
+  fail("Expected bottom navigation to fit iPhone screens.");
 }
 
-if (!html.includes('<div class="button-row motor-button-row">')) {
-  fail("Expected speed control buttons to use the full-width stacked button row.");
+if (!mediaHasDeclaration("(max-width: 640px)", ".distance-columns", "grid-template-columns", "minmax(0, 1fr) auto")) {
+  fail("Expected mobile distance panel to keep target and travelled fields in one compact row.");
 }
 
-if (!html.includes('<div class="distance-control">')) {
-  fail("Expected distance input to use the same header-and-control block as motor speed.");
+if (html.includes('id="distance-input"') && html.includes('placeholder="500"')) {
+  fail("Expected the target distance input to start empty without a 500 placeholder.");
 }
 
-if (!hasDeclaration(".motor-button-row", "grid-template-columns", "1fr")) {
-  fail("Expected speed control buttons to span the page width.");
-}
-
-if (!hasDeclaration(".action-button", "box-shadow", "none")) {
-  fail("Expected action buttons to have no colored glow or blur.");
-}
-
-if (!hasDeclaration(".motor-control", "box-shadow", "none")) {
-  fail("Expected motor control box to have no blur or shadow.");
-}
-
-if (!mediaHasDeclaration("(max-width: 520px)", ".app-shell", "padding", "10px")) {
-  fail("Expected mobile shell padding to be compact enough for an iPhone viewport.");
-}
-
-if (!mediaHasDeclaration("(max-width: 520px)", ".page-window", "min-height", "calc(100vh - 20px)")) {
-  fail("Expected mobile page window to use nearly the full iPhone viewport height.");
-}
-
-if (!mediaHasDeclaration("(max-width: 520px)", ".status-panel", "margin-bottom", "4px")) {
-  fail("Expected mobile status panels to sit closer together.");
-}
-
-if (!mediaHasDeclaration("(max-width: 520px)", ".distance-control", "margin", "7px 0 6px")) {
-  fail("Expected mobile distance control spacing to be compact.");
+if (!mediaHasDeclaration("(max-width: 640px)", ".action-button", "min-height", "48px")) {
+  fail("Expected mobile action buttons to be short enough for one-screen use.");
 }
 
 if (!hasDeclaration(".message:empty", "display", "none")) {
-  fail("Expected empty message rows to collapse so connection spacing matches both pages.");
+  fail("Expected empty message rows to collapse for one-screen use.");
 }
 
-if (process.exitCode) {
-  process.exit(process.exitCode);
+if (script.includes("motorArcHitArea.setAttribute('aria-disabled'")) {
+  fail("Expected disconnected preview state not to disable the speed arc drag area.");
 }
+
+if (script.includes("getAttribute('aria-disabled') === 'true'")) {
+  fail("Expected speed arc drag and keyboard handlers not to ignore input while preview is disconnected.");
+}
+
+if (process.exitCode) process.exit(process.exitCode);
 
 console.log("UI layout contract passed.");
