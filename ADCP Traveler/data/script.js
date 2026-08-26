@@ -10,6 +10,16 @@ const pageWindow = document.getElementById("page-window");
 const pageTrack = document.getElementById("page-track");
 const pageDots = Array.from(document.querySelectorAll(".page-dot"));
 
+const distanceInput = document.getElementById("distance-input");
+const distanceCwButton = document.getElementById("distance-cw");
+const distanceCcwButton = document.getElementById("distance-ccw");
+const distanceStartButton = document.getElementById("distance-start");
+const distanceStopButton = document.getElementById("distance-stop");
+const distanceZeroButton = document.getElementById("distance-zero");
+const distancePosition = document.getElementById("distance-position");
+const distanceStatus = document.getElementById("distance-status");
+const distanceMessage = document.getElementById("distance-message");
+
 let currentSpeed = 0;
 let isUserDragging = false;
 let ws = null;
@@ -19,6 +29,7 @@ let currentPage = 0;
 let swipeStartX = 0;
 let swipeStartY = 0;
 let isSwiping = false;
+let selectedDistanceDirection = null;
 
 function showPage(pageIndex) {
   currentPage = Math.max(0, Math.min(pageDots.length - 1, pageIndex));
@@ -36,7 +47,6 @@ function handleSwipeStart(event) {
     isSwiping = false;
     return;
   }
-
   const point = event.touches ? event.touches[0] : event;
   swipeStartX = point.clientX;
   swipeStartY = point.clientY;
@@ -44,29 +54,18 @@ function handleSwipeStart(event) {
 }
 
 function handleSwipeEnd(event) {
-  if (!isSwiping) {
-    return;
-  }
-
+  if (!isSwiping) return;
   const point = event.changedTouches ? event.changedTouches[0] : event;
   const deltaX = point.clientX - swipeStartX;
   const deltaY = point.clientY - swipeStartY;
   isSwiping = false;
-
-  if (Math.abs(deltaX) < 50 || Math.abs(deltaX) < Math.abs(deltaY)) {
-    return;
-  }
-
-  if (deltaX < 0) {
-    showPage(currentPage + 1);
-  } else {
-    showPage(currentPage - 1);
-  }
+  if (Math.abs(deltaX) < 50 || Math.abs(deltaX) < Math.abs(deltaY)) return;
+  showPage(deltaX < 0 ? currentPage + 1 : currentPage - 1);
 }
 
 function setButtonsDisabled(disabled) {
   buttons.forEach((button) => {
-    button.disabled = disabled;
+    if (button !== distanceStopButton) button.disabled = disabled;
   });
 }
 
@@ -74,57 +73,63 @@ function updateMotorSpeedDisplay(speed) {
   currentSpeed = Math.max(-255, Math.min(255, speed));
   const percentage = Math.round((Math.abs(currentSpeed) / 255) * 100);
   let direction = "STOP";
+  if (currentSpeed > 0) direction = "CW";
+  else if (currentSpeed < 0) direction = "CCW";
 
-  if (currentSpeed > 0) {
-    direction = "CW";
-  } else if (currentSpeed < 0) {
-    direction = "CCW";
-  }
-
-  motorSpeedValue.textContent =
-    currentSpeed === 0 ? "STOP" : `${direction} ${percentage}%`;
-
-  if (!isUserDragging) {
-    motorSpeedSlider.value = currentSpeed;
-  }
-
+  motorSpeedValue.textContent = currentSpeed === 0 ? "STOP" : `${direction} ${percentage}%`;
+  if (!isUserDragging) motorSpeedSlider.value = currentSpeed;
   motorControl.dataset.direction = direction.toLowerCase();
 }
 
 function updateState(state, speed) {
   const enabled = state === "on";
-
-  if (!enabled) {
-    stateElement.textContent = "OFF";
-  } else if (speed > 0) {
-    stateElement.textContent = "CW";
-  } else if (speed < 0) {
-    stateElement.textContent = "CCW";
-  } else {
-    stateElement.textContent = "STOPPED";
-  }
+  if (!enabled) stateElement.textContent = "OFF";
+  else if (speed > 0) stateElement.textContent = "CW";
+  else if (speed < 0) stateElement.textContent = "CCW";
+  else stateElement.textContent = "STOPPED";
 
   stateElement.classList.toggle("status-on", enabled);
   stateElement.classList.toggle("status-off", !enabled);
   updateMotorSpeedDisplay(Number.isFinite(speed) ? speed : 0);
 }
 
+function updateDistanceState(data) {
+  if (Number.isFinite(data.positionCm)) {
+    distancePosition.textContent = `${data.positionCm.toFixed(1)} cm`;
+  }
+
+  if (typeof data.distanceStatus === "string") {
+    distanceStatus.textContent = data.distanceStatus;
+  }
+
+  const active = Boolean(data.distanceActive);
+  distanceInput.disabled = active;
+  distanceCwButton.disabled = active;
+  distanceCcwButton.disabled = active;
+  distanceStartButton.disabled = active;
+  distanceZeroButton.disabled = active;
+  distanceStopButton.disabled = false;
+}
+
+function applyStateMessage(data) {
+  if (data.state !== undefined && data.speed !== undefined) {
+    updateState(data.state, data.speed);
+  }
+  updateDistanceState(data);
+}
+
 function updateWifiSignal(data) {
   const quality = Number.isFinite(data.quality) ? data.quality : 0;
   wifiBarsElement.dataset.quality = String(quality);
-
   if (!data.connected) {
     wifiSignalElement.textContent = "No device connected";
     wifiSignalElement.classList.remove("status-on");
     wifiSignalElement.classList.add("status-off");
     return;
   }
-
-  if (Number.isFinite(data.rssi)) {
-    wifiSignalElement.textContent = `${data.label.toUpperCase()} (${data.rssi} dBm)`;
-  } else {
-    wifiSignalElement.textContent = `${data.label.toUpperCase()}`;
-  }
+  wifiSignalElement.textContent = Number.isFinite(data.rssi)
+    ? `${data.label.toUpperCase()} (${data.rssi} dBm)`
+    : data.label.toUpperCase();
   wifiSignalElement.classList.remove("status-off");
   wifiSignalElement.classList.add("status-on");
 }
@@ -132,12 +137,8 @@ function updateWifiSignal(data) {
 async function refreshWifiSignal() {
   try {
     const response = await fetch("/wifi/signal", { keepalive: true });
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const data = await response.json();
-    updateWifiSignal(data);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    updateWifiSignal(await response.json());
   } catch (error) {
     wifiBarsElement.dataset.quality = "0";
     wifiSignalElement.textContent = "Unavailable";
@@ -158,11 +159,7 @@ function connectWebSocket() {
 
   ws.onmessage = (event) => {
     try {
-      const data = JSON.parse(event.data);
-
-      if (data.state !== undefined && data.speed !== undefined) {
-        updateState(data.state, data.speed);
-      }
+      applyStateMessage(JSON.parse(event.data));
     } catch (error) {
       console.error("Failed to parse message:", error);
     }
@@ -184,135 +181,120 @@ function sendWebSocketCommand(cmd) {
     ws.send(JSON.stringify(cmd));
     return true;
   }
-
   return false;
 }
 
 async function sendHttpCommand(cmd) {
   let endpoint = null;
+  if (cmd.cmd === "speed") endpoint = `/motor/speed?value=${encodeURIComponent(cmd.value)}`;
+  else if (cmd.cmd === "on") endpoint = "/motor/on";
+  else if (cmd.cmd === "off") endpoint = "/motor/off";
+  else if (cmd.cmd === "status") endpoint = "/motor/status";
+  else if (cmd.cmd === "distance_start") {
+    endpoint = `/distance/start?distance=${encodeURIComponent(cmd.distanceCm)}&direction=${encodeURIComponent(cmd.direction)}`;
+  } else if (cmd.cmd === "distance_stop") endpoint = "/distance/stop";
+  else if (cmd.cmd === "distance_zero") endpoint = "/distance/zero";
+  else if (cmd.cmd === "distance_status") endpoint = "/distance/status";
 
-  if (cmd.cmd === "speed") {
-    endpoint = `/motor/speed?value=${encodeURIComponent(cmd.value)}`;
-  } else if (cmd.cmd === "on") {
-    endpoint = "/motor/on";
-  } else if (cmd.cmd === "off") {
-    endpoint = "/motor/off";
-  } else if (cmd.cmd === "status") {
-    endpoint = "/motor/status";
-  }
-
-  if (!endpoint) {
-    return;
-  }
+  if (!endpoint) return;
 
   try {
     const response = await fetch(endpoint, { cache: "no-store" });
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
     const data = await response.json();
-    if (data.state !== undefined && data.speed !== undefined) {
-      updateState(data.state, data.speed);
-    }
+    if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+    applyStateMessage(data);
   } catch (error) {
-    messageElement.textContent = "Motor command failed";
-    console.error("Motor command failed:", error);
+    if (cmd.cmd.startsWith("distance_")) distanceMessage.textContent = error.message;
+    else messageElement.textContent = "Motor command failed";
+    console.error("Command failed:", error);
   }
 }
 
-function sendMotorCommand(cmd) {
-  if (sendWebSocketCommand(cmd)) {
-    return;
-  }
-
-  if (cmd.cmd === "speed") {
-    messageElement.textContent = "Using HTTP motor control";
-  } else {
-    messageElement.textContent = "WebSocket not connected, using HTTP";
-  }
-  sendHttpCommand(cmd);
+function sendCommand(cmd) {
+  if (!sendWebSocketCommand(cmd)) sendHttpCommand(cmd);
 }
 
 function sendSpeedValue(speedValue) {
   pendingSpeedValue = speedValue;
-
-  if (speedSendTimer) {
-    return;
-  }
-
+  if (speedSendTimer) return;
   speedSendTimer = setTimeout(() => {
     speedSendTimer = null;
-
-    if (pendingSpeedValue === null) {
-      return;
-    }
-
+    if (pendingSpeedValue === null) return;
     const valueToSend = pendingSpeedValue;
     pendingSpeedValue = null;
-    sendMotorCommand({ cmd: "speed", value: valueToSend });
+    sendCommand({ cmd: "speed", value: valueToSend });
   }, 30);
 }
 
 function sendOnCommand() {
-  setButtonsDisabled(true);
   messageElement.textContent = "Enabling motor...";
-  sendMotorCommand({ cmd: "on" });
-  setTimeout(() => {
-    setButtonsDisabled(false);
-  }, 500);
+  sendCommand({ cmd: "on" });
 }
 
 function sendOffCommand() {
-  setButtonsDisabled(true);
   messageElement.textContent = "Stopping motor...";
   updateMotorSpeedDisplay(0);
-  sendMotorCommand({ cmd: "off" });
-  setTimeout(() => {
-    setButtonsDisabled(false);
-  }, 500);
+  sendCommand({ cmd: "off" });
 }
 
-motorSpeedSlider.addEventListener("mousedown", () => {
-  isUserDragging = true;
-});
+function selectDistanceDirection(direction) {
+  selectedDistanceDirection = direction;
+  distanceCwButton.classList.toggle("selected", direction === "cw");
+  distanceCcwButton.classList.toggle("selected", direction === "ccw");
+}
 
-motorSpeedSlider.addEventListener("touchstart", () => {
-  isUserDragging = true;
-});
+function startDistanceMove() {
+  const distanceCm = Number.parseFloat(distanceInput.value);
+  if (!Number.isFinite(distanceCm) || distanceCm <= 0) {
+    distanceMessage.textContent = "Enter a distance greater than 0 cm";
+    return;
+  }
+  if (!selectedDistanceDirection) {
+    distanceMessage.textContent = "Select CW or CCW";
+    return;
+  }
+  distanceMessage.textContent = "Starting move...";
+  sendCommand({ cmd: "distance_start", distanceCm, direction: selectedDistanceDirection });
+}
 
-motorSpeedSlider.addEventListener("mouseup", () => {
-  isUserDragging = false;
-});
+function stopDistanceMove() {
+  distanceMessage.textContent = "Stopping...";
+  sendCommand({ cmd: "distance_stop" });
+}
 
-motorSpeedSlider.addEventListener("touchend", () => {
-  isUserDragging = false;
-});
+function zeroDistancePosition() {
+  distanceMessage.textContent = "Setting zero...";
+  sendCommand({ cmd: "distance_zero" });
+}
 
+motorSpeedSlider.addEventListener("mousedown", () => { isUserDragging = true; });
+motorSpeedSlider.addEventListener("touchstart", () => { isUserDragging = true; });
+motorSpeedSlider.addEventListener("mouseup", () => { isUserDragging = false; });
+motorSpeedSlider.addEventListener("touchend", () => { isUserDragging = false; });
 motorSpeedSlider.addEventListener("input", (event) => {
   const sliderValue = parseInt(event.target.value, 10);
   updateMotorSpeedDisplay(sliderValue);
   messageElement.textContent = "Adjusting motor speed...";
   sendSpeedValue(sliderValue);
 });
-
 motorSpeedSlider.addEventListener("change", (event) => {
-  const sliderValue = parseInt(event.target.value, 10);
-  sendSpeedValue(sliderValue);
+  sendSpeedValue(parseInt(event.target.value, 10));
 });
 
 document.getElementById("motor-on").addEventListener("click", sendOnCommand);
 document.getElementById("motor-off").addEventListener("click", sendOffCommand);
+distanceCwButton.addEventListener("click", () => selectDistanceDirection("cw"));
+distanceCcwButton.addEventListener("click", () => selectDistanceDirection("ccw"));
+distanceStartButton.addEventListener("click", startDistanceMove);
+distanceStopButton.addEventListener("click", stopDistanceMove);
+distanceZeroButton.addEventListener("click", zeroDistancePosition);
 
 pageWindow.addEventListener("touchstart", handleSwipeStart, { passive: true });
 pageWindow.addEventListener("touchend", handleSwipeEnd);
 pageWindow.addEventListener("mousedown", handleSwipeStart);
 pageWindow.addEventListener("mouseup", handleSwipeEnd);
-
 pageDots.forEach((dot) => {
-  dot.addEventListener("click", () => {
-    showPage(parseInt(dot.dataset.page, 10));
-  });
+  dot.addEventListener("click", () => showPage(parseInt(dot.dataset.page, 10)));
 });
 
 showPage(0);
