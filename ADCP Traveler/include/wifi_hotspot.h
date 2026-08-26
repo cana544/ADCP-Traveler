@@ -40,9 +40,9 @@ class WifiHotspot {
   void stopDistanceMove();
   bool zeroPosition();
 
+  String makeStateJson() const;
   void sendMotorStateResponse(AsyncWebServerRequest* request);
   void sendDistanceStateResponse(AsyncWebServerRequest* request);
-  void appendStateJson(JsonDocument& response) const;
   void broadcastMotorState();
   void sendWifiSignalResponse(AsyncWebServerRequest* request);
   bool serveFile(AsyncWebServerRequest* request, const char* path,
