@@ -1,5 +1,7 @@
 #include "motor_controller.h"
 
+#include "config.h"
+
 MotorController::MotorController(uint8_t rpwmChannel, uint8_t lpwmChannel,
                                  uint32_t frequency, uint8_t resolutionBits)
     : rpwmPin_(25),
@@ -74,6 +76,14 @@ void MotorController::setSpeed(int speed) {
   }
 }
 
+void MotorController::setVoltage(float voltage) {
+  const float limited = constrain(voltage, -Config::Control::SUPPLY_VOLTAGE,
+                                  Config::Control::SUPPLY_VOLTAGE);
+  const float dutyScale = static_cast<float>(MAX_DUTY) /
+                          Config::Control::SUPPLY_VOLTAGE;
+  setSpeed(static_cast<int>(roundf(limited * dutyScale)));
+}
+
 void MotorController::stop() {
   currentSpeed_ = 0;
   applySpeed();
@@ -83,6 +93,16 @@ void MotorController::stop() {
 bool MotorController::isEnabled() const { return enabled_; }
 
 int MotorController::currentSpeed() const { return currentSpeed_; }
+
+int MotorController::direction() const {
+  if (currentSpeed_ > 0) {
+    return 1;
+  }
+  if (currentSpeed_ < 0) {
+    return -1;
+  }
+  return 0;
+}
 
 void MotorController::applySpeed() {
   if (!enabled_) {
