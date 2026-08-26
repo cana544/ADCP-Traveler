@@ -5,125 +5,347 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="theme-color" content="#071a35" />
     <meta http-equiv="Cache-Control" content="no-store" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <title>Gauge Glide</title>
-    <link rel="stylesheet" href="/style.css?v=distance-1" />
+    <link rel="stylesheet" href="/style.css?v=ui-refresh-2" />
   </head>
   <body>
     <main class="app-shell">
       <div class="page-window" id="page-window">
+        <header class="app-header">
+          <div class="brand-block">
+            <div class="brand-lockup">
+              <div class="brand-mark" aria-hidden="true">
+                <svg viewBox="0 0 64 64" role="presentation">
+                  <path d="M32 6 48 12v14c0 11-5.8 21.1-16 30C21.8 47.1 16 37 16 26V12l16-6Z" />
+                  <path d="M21 21h22M32 16v28M23 32h18" class="brand-mark-detail" />
+                </svg>
+              </div>
+              <div class="brand-copy">
+                <p class="brand-line brand-line-small">THE UNIVERSITY OF</p>
+                <p class="brand-line brand-line-large">AUCKLAND</p>
+                <p class="brand-line brand-line-small spaced">NEW ZEALAND</p>
+              </div>
+            </div>
+            <div class="brand-divider" aria-hidden="true"></div>
+            <div class="product-copy">
+              <p class="product-title">GAUGE GLIDE</p>
+              <p class="product-subtitle">ADCP TRAVELLER</p>
+            </div>
+          </div>
+
+          <div class="header-status">
+            <div class="header-wifi-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" role="presentation">
+                <path d="M12 18.2a1.7 1.7 0 1 0 0 3.4 1.7 1.7 0 0 0 0-3.4Z" />
+                <path d="M7.6 14.7a6.2 6.2 0 0 1 8.8 0" />
+                <path d="M4.6 11.4a10.6 10.6 0 0 1 14.8 0" />
+                <path d="M1.8 8.2a14.6 14.6 0 0 1 20.4 0" />
+              </svg>
+            </div>
+            <div class="connection-indicator connected" id="connection-pill">
+              <span class="indicator-dot" id="connection-dot" aria-hidden="true"></span>
+              <span id="connection-status-label">CONNECTED</span>
+            </div>
+          </div>
+        </header>
+
         <div class="page-viewport">
           <div class="page-track" id="page-track">
-            <section class="app-page">
-              <div class="control-card">
-                <p class="eyebrow">Gauge Glide Traveller</p>
-                <h1>Speed Control</h1>
-
-                <div class="status-panel wifi-panel">
-                  <span class="status-label">Wi-Fi signal</span>
-                  <div class="signal-status">
-                    <span id="wifi-bars" class="wifi-bars" aria-hidden="true">
-                      <span class="wifi-bar"></span>
-                      <span class="wifi-bar"></span>
-                      <span class="wifi-bar"></span>
-                      <span class="wifi-bar"></span>
+            <section class="app-page" aria-labelledby="speed-page-title">
+              <div class="page-content control-card">
+                <div class="hero-row">
+                  <div>
+                    <h1 id="speed-page-title">Speed Control</h1>
+                    <p class="page-subtitle">Control the motor speed manually.</p>
+                  </div>
+                  <button class="system-toggle is-off" type="button" data-action="system-toggle">
+                    <span class="system-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" role="presentation">
+                        <path d="M12 2.8v7.8" />
+                        <path d="M7.2 5.5a8.4 8.4 0 1 0 9.6 0" />
+                      </svg>
                     </span>
-                    <span id="wifi-signal" class="status-value wifi-signal-value">Checking...</span>
-                  </div>
+                    <span class="system-toggle-label">System OFF</span>
+                  </button>
                 </div>
 
-                <div class="status-panel state-panel">
-                  <span class="status-label">Current state</span>
-                  <span id="motor-state" class="status-value status-off motor-state-value">OFF</span>
-                </div>
-
-                <div class="motor-control" data-direction="stop">
-                  <div class="motor-header">
-                    <span class="motor-icon" aria-hidden="true">M</span>
-                    <span class="motor-label">Motor speed</span>
-                    <span id="motor-speed-value" class="motor-percentage">STOP</span>
+                <section class="status-card status-card-two" aria-label="System status">
+                  <div class="status-item">
+                    <div class="status-icon status-icon-wifi" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" role="presentation">
+                        <path d="M12 18.2a1.7 1.7 0 1 0 0 3.4 1.7 1.7 0 0 0 0-3.4Z" />
+                        <path d="M7.6 14.7a6.2 6.2 0 0 1 8.8 0" />
+                        <path d="M4.6 11.4a10.6 10.6 0 0 1 14.8 0" />
+                        <path d="M1.8 8.2a14.6 14.6 0 0 1 20.4 0" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p class="status-label">Wi-Fi Signal</p>
+                      <p class="status-value wifi-signal-value status-accent">Checking...</p>
+                    </div>
                   </div>
-                  <input id="motor-speed-slider" type="range" min="-255" max="255" value="0" step="1" class="motor-slider" aria-label="Motor speed and direction" />
-                  <div class="direction-labels" aria-hidden="true">
-                    <span>CCW</span>
+
+                  <div class="status-divider" aria-hidden="true"></div>
+
+                  <div class="status-item">
+                    <div class="status-icon status-icon-motor" aria-hidden="true">M</div>
+                    <div>
+                      <p class="status-label">Motor State</p>
+                      <p id="motor-state" class="status-value motor-state-value status-off">OFF</p>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="control-section" aria-labelledby="motor-speed-heading">
+                  <div class="section-header">
+                    <h2 id="motor-speed-heading">Motor Speed</h2>
+                    <span id="motor-speed-value" class="section-emphasis">STOP</span>
+                  </div>
+
+                  <div class="arc-widget motor-control" id="motor-arc-control" data-direction="stop">
+                    <svg id="motor-arc-svg" class="arc-svg" viewBox="0 0 400 240" aria-hidden="true">
+                      <defs>
+                        <linearGradient id="speedArcGradient" x1="0%" y1="50%" x2="100%" y2="50%">
+                          <stop offset="0%" stop-color="#4d9ed8" />
+                          <stop offset="50%" stop-color="#41b6a1" />
+                          <stop offset="100%" stop-color="#45c44f" />
+                        </linearGradient>
+                        <filter id="knobShadow" x="-50%" y="-50%" width="200%" height="200%">
+                          <feDropShadow dx="0" dy="6" stdDeviation="6" flood-opacity="0.18" />
+                        </filter>
+                      </defs>
+                      <path
+                        id="motor-arc-track"
+                        d="M 35 190 A 165 165 0 0 1 365 190"
+                        class="arc-track"
+                      />
+                      <g id="motor-arc-ticks" class="arc-ticks"></g>
+                      <circle id="motor-arc-knob" class="arc-knob" cx="200" cy="25" r="16" />
+                    </svg>
+
+                    <div class="arc-readout">
+                      <div id="motor-speed-percent" class="arc-percentage">0%</div>
+                      <div class="arc-caption">Speed</div>
+                    </div>
+
+                    <div class="arc-axis-label arc-axis-left">CCW</div>
+                    <div id="motor-direction-display" class="arc-axis-label arc-axis-centre">STOP</div>
+                    <div class="arc-axis-label arc-axis-right">CW</div>
+
+                    <div
+                      class="arc-hit-area"
+                      id="motor-arc-hit-area"
+                      role="slider"
+                      aria-label="Motor speed and direction"
+                      aria-valuemin="-255"
+                      aria-valuemax="255"
+                      aria-valuenow="0"
+                      tabindex="0"
+                    ></div>
+                    <input id="motor-speed-slider" type="range" min="-255" max="255" value="0" step="1" class="sr-only" />
+                  </div>
+                </section>
+
+                <div class="button-stack">
+                  <button id="motor-on" class="action-button action-on" type="button">
+                    <span class="button-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" role="presentation">
+                        <path d="M8 6.5 18.5 12 8 17.5Z" />
+                      </svg>
+                    </span>
+                    <span>START</span>
+                  </button>
+                  <button id="motor-off" class="action-button action-off" type="button">
+                    <span class="button-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" role="presentation">
+                        <rect x="7" y="7" width="10" height="10" rx="1.6" />
+                      </svg>
+                    </span>
                     <span>STOP</span>
-                    <span>CW</span>
-                  </div>
+                  </button>
                 </div>
 
-                <div class="button-row motor-button-row">
-                  <button id="motor-on" class="action-button action-on" type="button">START</button>
-                  <button id="motor-off" class="action-button action-off" type="button">STOP</button>
-                </div>
-
-                <p id="message" class="message connection-message" aria-live="polite"></p>
+                <p id="message" class="message" aria-live="polite"></p>
+                <p class="message connection-message connection-note" aria-live="polite"></p>
               </div>
             </section>
 
-            <section class="app-page">
-              <div class="control-card distance-card">
-                <p class="eyebrow">Gauge Glide Traveller</p>
-                <h1>Distance Control</h1>
-
-                <div class="status-panel wifi-panel">
-                  <span class="status-label">Wi-Fi signal</span>
-                  <div class="signal-status">
-                    <span id="distance-wifi-bars" class="wifi-bars" aria-hidden="true">
-                      <span class="wifi-bar"></span>
-                      <span class="wifi-bar"></span>
-                      <span class="wifi-bar"></span>
-                      <span class="wifi-bar"></span>
+            <section class="app-page" aria-labelledby="distance-page-title">
+              <div class="page-content control-card">
+                <div class="hero-row">
+                  <div>
+                    <h1 id="distance-page-title">Distance Control</h1>
+                    <p class="page-subtitle">Move the traveller a set distance.</p>
+                  </div>
+                  <button class="system-toggle is-off" type="button" data-action="system-toggle">
+                    <span class="system-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" role="presentation">
+                        <path d="M12 2.8v7.8" />
+                        <path d="M7.2 5.5a8.4 8.4 0 1 0 9.6 0" />
+                      </svg>
                     </span>
-                    <span id="distance-wifi-signal" class="status-value wifi-signal-value">Checking...</span>
+                    <span class="system-toggle-label">System OFF</span>
+                  </button>
+                </div>
+
+                <section class="status-card status-card-three" aria-label="Distance status">
+                  <div class="status-item">
+                    <div class="status-icon status-icon-wifi" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" role="presentation">
+                        <path d="M12 18.2a1.7 1.7 0 1 0 0 3.4 1.7 1.7 0 0 0 0-3.4Z" />
+                        <path d="M7.6 14.7a6.2 6.2 0 0 1 8.8 0" />
+                        <path d="M4.6 11.4a10.6 10.6 0 0 1 14.8 0" />
+                        <path d="M1.8 8.2a14.6 14.6 0 0 1 20.4 0" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p class="status-label">Wi-Fi Signal</p>
+                      <p class="status-value wifi-signal-value status-accent">Checking...</p>
+                    </div>
                   </div>
-                </div>
 
-                <div class="status-panel state-panel">
-                  <span class="status-label">Current state</span>
-                  <span id="distance-motor-state" class="status-value status-off motor-state-value">OFF</span>
-                </div>
+                  <div class="status-divider" aria-hidden="true"></div>
 
-                <div class="status-panel distance-status-panel">
-                  <span class="status-label">Distance status</span>
-                  <span id="distance-status" class="status-value">IDLE</span>
-                </div>
-
-                <div class="distance-control">
-                  <div class="motor-header">
-                    <label class="motor-label" for="distance-input">Distance</label>
-                    <span id="distance-position" class="motor-percentage">0.0 cm</span>
+                  <div class="status-item">
+                    <div class="status-icon status-icon-state" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" role="presentation">
+                        <path d="M12 2.8v7.8" />
+                        <path d="M7.2 5.5a8.4 8.4 0 1 0 9.6 0" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p class="status-label">Current State</p>
+                      <p class="status-value motor-state-value status-off">OFF</p>
+                    </div>
                   </div>
-                  <div class="distance-input-row">
-                    <input id="distance-input" class="distance-input" type="number" min="0.1" step="0.1" inputmode="decimal" placeholder="500" />
-                    <span class="distance-unit">cm</span>
+
+                  <div class="status-divider" aria-hidden="true"></div>
+
+                  <div class="status-item">
+                    <div class="status-icon status-icon-distance" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" role="presentation">
+                        <circle cx="12" cy="12" r="8" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p class="status-label">Distance Status</p>
+                      <p id="distance-status" class="status-value">IDLE</p>
+                    </div>
                   </div>
+                </section>
+
+                <section class="distance-panel">
+                  <div class="distance-columns">
+                    <div class="distance-field-block">
+                      <label class="distance-field-label" for="distance-input">Target Distance</label>
+                      <div class="distance-input-wrapper">
+                        <input
+                          id="distance-input"
+                          class="distance-input"
+                          type="number"
+                          min="0.1"
+                          step="0.1"
+                          inputmode="decimal"
+                          placeholder="500"
+                        />
+                        <span class="distance-unit">cm</span>
+                      </div>
+                    </div>
+
+                    <div class="travelled-block">
+                      <p class="distance-field-label">Travelled</p>
+                      <p id="distance-position" class="travelled-value">0.0 cm</p>
+                    </div>
+                  </div>
+                </section>
+
+                <div class="button-row direction-row">
+                  <button id="distance-ccw" class="action-button direction-button" type="button">
+                    <span class="button-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" role="presentation">
+                        <path d="M11 6 6 11l5 5" />
+                        <path d="M6 11h6.8a5.2 5.2 0 0 1 5.2 5.2" />
+                      </svg>
+                    </span>
+                    <span>CCW</span>
+                  </button>
+                  <button id="distance-cw" class="action-button direction-button" type="button">
+                    <span>CW</span>
+                    <span class="button-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" role="presentation">
+                        <path d="m13 6 5 5-5 5" />
+                        <path d="M18 11h-6.8A5.2 5.2 0 0 0 6 16.2" />
+                      </svg>
+                    </span>
+                  </button>
                 </div>
 
-                <div class="button-row direction-select-row">
-                  <button id="distance-ccw" class="action-button direction-button" type="button">CCW</button>
-                  <button id="distance-cw" class="action-button direction-button" type="button">CW</button>
+                <div class="button-stack">
+                  <button id="distance-start" class="action-button action-on" type="button">
+                    <span class="button-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" role="presentation">
+                        <path d="M8 6.5 18.5 12 8 17.5Z" />
+                      </svg>
+                    </span>
+                    <span>START</span>
+                  </button>
+                  <button id="distance-stop" class="action-button action-off" type="button">
+                    <span class="button-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" role="presentation">
+                        <rect x="7" y="7" width="10" height="10" rx="1.6" />
+                      </svg>
+                    </span>
+                    <span>STOP</span>
+                  </button>
+                  <button id="distance-zero" class="action-button zero-button" type="button">
+                    <span class="button-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" role="presentation">
+                        <circle cx="12" cy="12" r="8" />
+                      </svg>
+                    </span>
+                    <span>ZERO</span>
+                  </button>
                 </div>
 
-                <button id="distance-start" class="action-button action-on distance-wide-button" type="button">START</button>
-                <button id="distance-stop" class="action-button action-off distance-wide-button" type="button">STOP</button>
-                <button id="distance-zero" class="action-button distance-zero-button distance-wide-button" type="button">ZERO</button>
-
+                <p class="zero-helper">Set current position as new zero</p>
                 <p id="distance-message" class="message" aria-live="polite"></p>
-                <p id="distance-connection-message" class="message connection-message" aria-live="polite"></p>
+                <p id="distance-connection-message" class="message connection-message connection-note" aria-live="polite"></p>
               </div>
             </section>
           </div>
         </div>
 
-        <div class="page-dots" aria-label="Page selector">
-          <button class="page-dot active" type="button" data-page="0" aria-label="Motor control page" aria-current="true"></button>
-          <button class="page-dot" type="button" data-page="1" aria-label="Distance control page" aria-current="false"></button>
-        </div>
+        <nav class="bottom-nav" aria-label="Page navigation">
+          <button class="nav-button active" type="button" data-page="0" aria-current="true">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" role="presentation">
+                <path d="M5.5 13.5a6.5 6.5 0 1 1 13 0" />
+                <path d="M12 7v4.5" />
+                <path d="m12 11.5 3 2" />
+                <circle cx="12" cy="14" r="1.3" />
+              </svg>
+            </span>
+            <span>Speed Control</span>
+          </button>
+          <div class="nav-divider" aria-hidden="true"></div>
+          <button class="nav-button" type="button" data-page="1" aria-current="false">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" role="presentation">
+                <path d="M12 21s6-5.3 6-10.3A6 6 0 0 0 6 10.7C6 15.7 12 21 12 21Z" />
+                <circle cx="12" cy="10.6" r="2.2" />
+              </svg>
+            </span>
+            <span>Distance Control</span>
+          </button>
+        </nav>
       </div>
     </main>
 
-    <script src="/script.js?v=distance-1"></script>
+    <script src="/script.js?v=ui-refresh-2"></script>
   </body>
 </html>
