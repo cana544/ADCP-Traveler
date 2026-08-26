@@ -27,6 +27,7 @@ class WifiHotspot {
   AsyncWebSocket ws_;
 
   int pendingManualSpeed_;
+  int manualDirection_;
   bool manualReversalPending_;
   uint32_t lastControlUs_;
   uint32_t lastStateBroadcastMs_;
