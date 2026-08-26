@@ -1,16 +1,21 @@
-const stateElement = document.getElementById("motor-state");
 const stateElements = Array.from(document.querySelectorAll(".motor-state-value"));
+const systemStateElements = Array.from(document.querySelectorAll(".system-state-value"));
+const systemStatusCards = Array.from(document.querySelectorAll(".system-status-card"));
 const wifiSignalElements = Array.from(document.querySelectorAll(".wifi-signal-value"));
 const wifiBarsElements = Array.from(document.querySelectorAll(".wifi-bars"));
 const messageElement = document.getElementById("message");
 const connectionMessageElements = Array.from(document.querySelectorAll(".connection-message"));
+const headerConnectionDot = document.getElementById("header-connection-dot");
+const headerConnectionText = document.getElementById("header-connection-text");
 const motorSpeedSlider = document.getElementById("motor-speed-slider");
 const motorSpeedValue = document.getElementById("motor-speed-value");
-const motorControl = document.querySelector(".motor-control");
+const motorSpeedPercent = document.getElementById("motor-speed-percent");
+const motorDirectionValue = document.getElementById("motor-direction-value");
+const motorControl = document.querySelector(".speed-gauge");
 const buttons = Array.from(document.querySelectorAll(".action-button"));
 const pageWindow = document.getElementById("page-window");
 const pageTrack = document.getElementById("page-track");
-const pageDots = Array.from(document.querySelectorAll(".page-dot"));
+const pageButtons = Array.from(document.querySelectorAll(".page-nav-button"));
 
 const distanceInput = document.getElementById("distance-input");
 const distanceCwButton = document.getElementById("distance-cw");
@@ -34,13 +39,13 @@ let isSwiping = false;
 let selectedDistanceDirection = null;
 
 function showPage(pageIndex) {
-  currentPage = Math.max(0, Math.min(pageDots.length - 1, pageIndex));
+  currentPage = Math.max(0, Math.min(pageButtons.length - 1, pageIndex));
   pageTrack.style.transform = `translateX(-${currentPage * 50}%)`;
 
-  pageDots.forEach((dot, index) => {
+  pageButtons.forEach((button, index) => {
     const active = index === currentPage;
-    dot.classList.toggle("active", active);
-    dot.setAttribute("aria-current", active ? "true" : "false");
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-current", active ? "true" : "false");
   });
 }
 
@@ -71,6 +76,17 @@ function setButtonsDisabled(disabled) {
   });
 }
 
+function updateGaugeKnob(speed) {
+  const t = (speed + 255) / 510;
+  const oneMinusT = 1 - t;
+  const svgX = oneMinusT * oneMinusT * 28 + 2 * oneMinusT * t * 300 + t * t * 572;
+  const svgY = oneMinusT * oneMinusT * 220 + 2 * oneMinusT * t * -55 + t * t * 220;
+  const xPercent = (svgX / 600) * 100;
+  const yPercent = ((10 + (svgY / 250) * 235) / 330) * 100;
+  motorControl.style.setProperty("--knob-x", `${xPercent.toFixed(2)}%`);
+  motorControl.style.setProperty("--knob-y", `${yPercent.toFixed(2)}%`);
+}
+
 function updateMotorSpeedDisplay(speed) {
   currentSpeed = Math.max(-255, Math.min(255, speed));
   const percentage = Math.round((Math.abs(currentSpeed) / 255) * 100);
@@ -78,9 +94,12 @@ function updateMotorSpeedDisplay(speed) {
   if (currentSpeed > 0) direction = "CW";
   else if (currentSpeed < 0) direction = "CCW";
 
-  motorSpeedValue.textContent = currentSpeed === 0 ? "STOP" : `${direction} ${percentage}%`;
+  motorSpeedValue.textContent = direction;
+  motorSpeedPercent.textContent = `${percentage}%`;
+  motorDirectionValue.textContent = direction;
   if (!isUserDragging) motorSpeedSlider.value = currentSpeed;
   motorControl.dataset.direction = direction.toLowerCase();
+  updateGaugeKnob(currentSpeed);
 }
 
 function updateState(state, speed) {
@@ -95,6 +114,15 @@ function updateState(state, speed) {
     element.classList.toggle("status-on", enabled);
     element.classList.toggle("status-off", !enabled);
   });
+
+  systemStateElements.forEach((element) => {
+    element.textContent = enabled ? "System ON" : "System OFF";
+  });
+  systemStatusCards.forEach((card) => {
+    card.classList.toggle("system-on", enabled);
+    card.classList.toggle("system-off", !enabled);
+  });
+
   updateMotorSpeedDisplay(Number.isFinite(speed) ? speed : 0);
 }
 
@@ -123,13 +151,14 @@ function applyStateMessage(data) {
   updateDistanceState(data);
 }
 
+function formatSignalLabel(label) {
+  if (typeof label !== "string" || !label.length) return "Unknown";
+  return label.charAt(0).toUpperCase() + label.slice(1).toLowerCase();
+}
+
 function updateWifiSignal(data) {
   const quality = Number.isFinite(data.quality) ? data.quality : 0;
-  const text = !data.connected
-    ? "No device connected"
-    : Number.isFinite(data.rssi)
-    ? `${data.label.toUpperCase()} (${data.rssi} dBm)`
-    : data.label.toUpperCase();
+  const text = !data.connected ? "No device" : formatSignalLabel(data.label);
 
   wifiBarsElements.forEach((element) => {
     element.dataset.quality = String(quality);
@@ -158,6 +187,19 @@ async function refreshWifiSignal() {
   }
 }
 
+function setHeaderConnection(status) {
+  headerConnectionDot.classList.remove("connected", "disconnected");
+  if (status === "connected") {
+    headerConnectionDot.classList.add("connected");
+    headerConnectionText.textContent = "CONNECTED";
+  } else if (status === "connecting") {
+    headerConnectionText.textContent = "CONNECTING";
+  } else {
+    headerConnectionDot.classList.add("disconnected");
+    headerConnectionText.textContent = "DISCONNECTED";
+  }
+}
+
 function setConnectionMessage(text) {
   connectionMessageElements.forEach((element) => {
     element.textContent = text;
@@ -165,10 +207,12 @@ function setConnectionMessage(text) {
 }
 
 function connectWebSocket() {
+  setHeaderConnection("connecting");
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
 
   ws.onopen = () => {
+    setHeaderConnection("connected");
     setConnectionMessage("Connected to ESP32 via WebSocket");
     setButtonsDisabled(false);
     ws.send(JSON.stringify({ cmd: "status" }));
@@ -183,10 +227,12 @@ function connectWebSocket() {
   };
 
   ws.onerror = () => {
+    setHeaderConnection("disconnected");
     setConnectionMessage("WebSocket connection error");
   };
 
   ws.onclose = () => {
+    setHeaderConnection("disconnected");
     setConnectionMessage("Disconnected from ESP32. Reconnecting...");
     setButtonsDisabled(true);
     setTimeout(connectWebSocket, 3000);
@@ -310,11 +356,12 @@ pageWindow.addEventListener("touchstart", handleSwipeStart, { passive: true });
 pageWindow.addEventListener("touchend", handleSwipeEnd);
 pageWindow.addEventListener("mousedown", handleSwipeStart);
 pageWindow.addEventListener("mouseup", handleSwipeEnd);
-pageDots.forEach((dot) => {
-  dot.addEventListener("click", () => showPage(parseInt(dot.dataset.page, 10)));
+pageButtons.forEach((button) => {
+  button.addEventListener("click", () => showPage(parseInt(button.dataset.page, 10)));
 });
 
 showPage(0);
+updateMotorSpeedDisplay(0);
 connectWebSocket();
 refreshWifiSignal();
 setInterval(refreshWifiSignal, 5000);
