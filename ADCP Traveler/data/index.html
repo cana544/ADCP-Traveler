@@ -14,93 +14,113 @@
   <body>
     <main class="app-shell">
       <div class="page-window" id="page-window">
-        <div class="page-track" id="page-track">
-          <section class="app-page">
-            <div class="control-card">
-              <p class="eyebrow">Gauge Glide Traveller</p>
-              <h1>Speed Control</h1>
-              <p class="description">Use the slider to control the traveller's direction and speed.</p>
+        <div class="page-viewport">
+          <div class="page-track" id="page-track">
+            <section class="app-page">
+              <div class="control-card">
+                <p class="eyebrow">Gauge Glide Traveller</p>
+                <h1>Speed Control</h1>
 
-              <div class="status-panel">
-                <span class="status-label">Current state</span>
-                <span id="motor-state" class="status-value status-off">OFF</span>
-              </div>
-
-              <div class="status-panel">
-                <span class="status-label">Wi-Fi signal</span>
-                <div class="signal-status">
-                  <span id="wifi-bars" class="wifi-bars" aria-hidden="true">
-                    <span class="wifi-bar"></span>
-                    <span class="wifi-bar"></span>
-                    <span class="wifi-bar"></span>
-                    <span class="wifi-bar"></span>
-                  </span>
-                  <span id="wifi-signal" class="status-value">Checking...</span>
+                <div class="status-panel wifi-panel">
+                  <span class="status-label">Wi-Fi signal</span>
+                  <div class="signal-status">
+                    <span id="wifi-bars" class="wifi-bars" aria-hidden="true">
+                      <span class="wifi-bar"></span>
+                      <span class="wifi-bar"></span>
+                      <span class="wifi-bar"></span>
+                      <span class="wifi-bar"></span>
+                    </span>
+                    <span id="wifi-signal" class="status-value wifi-signal-value">Checking...</span>
+                  </div>
                 </div>
-              </div>
 
-              <div class="motor-control" data-direction="stop">
-                <div class="motor-header">
-                  <span class="motor-icon" aria-hidden="true">M</span>
-                  <span class="motor-label">Motor speed</span>
-                  <span id="motor-speed-value" class="motor-percentage">STOP</span>
+                <div class="status-panel state-panel">
+                  <span class="status-label">Current state</span>
+                  <span id="motor-state" class="status-value status-off motor-state-value">OFF</span>
                 </div>
-                <input id="motor-speed-slider" type="range" min="-255" max="255" value="0" step="1" class="motor-slider" aria-label="Motor speed and direction" />
-                <div class="direction-labels" aria-hidden="true">
-                  <span>CCW</span>
-                  <span>STOP</span>
-                  <span>CW</span>
+
+                <div class="motor-control" data-direction="stop">
+                  <div class="motor-header">
+                    <span class="motor-icon" aria-hidden="true">M</span>
+                    <span class="motor-label">Motor speed</span>
+                    <span id="motor-speed-value" class="motor-percentage">STOP</span>
+                  </div>
+                  <input id="motor-speed-slider" type="range" min="-255" max="255" value="0" step="1" class="motor-slider" aria-label="Motor speed and direction" />
+                  <div class="direction-labels" aria-hidden="true">
+                    <span>CCW</span>
+                    <span>STOP</span>
+                    <span>CW</span>
+                  </div>
                 </div>
+
+                <div class="button-row motor-button-row">
+                  <button id="motor-on" class="action-button action-on" type="button">START</button>
+                  <button id="motor-off" class="action-button action-off" type="button">STOP</button>
+                </div>
+
+                <p id="message" class="message connection-message" aria-live="polite"></p>
               </div>
+            </section>
 
-              <div class="button-row">
-                <button id="motor-on" class="action-button action-on" type="button">ON</button>
-                <button id="motor-off" class="action-button action-off" type="button">STOP</button>
+            <section class="app-page">
+              <div class="control-card distance-card">
+                <p class="eyebrow">Gauge Glide Traveller</p>
+                <h1>Distance Control</h1>
+
+                <div class="status-panel wifi-panel">
+                  <span class="status-label">Wi-Fi signal</span>
+                  <div class="signal-status">
+                    <span id="distance-wifi-bars" class="wifi-bars" aria-hidden="true">
+                      <span class="wifi-bar"></span>
+                      <span class="wifi-bar"></span>
+                      <span class="wifi-bar"></span>
+                      <span class="wifi-bar"></span>
+                    </span>
+                    <span id="distance-wifi-signal" class="status-value wifi-signal-value">Checking...</span>
+                  </div>
+                </div>
+
+                <div class="status-panel state-panel">
+                  <span class="status-label">Current state</span>
+                  <span id="distance-motor-state" class="status-value status-off motor-state-value">OFF</span>
+                </div>
+
+                <div class="status-panel distance-status-panel">
+                  <span class="status-label">Distance status</span>
+                  <span id="distance-status" class="status-value">IDLE</span>
+                </div>
+
+                <div class="distance-control">
+                  <div class="motor-header">
+                    <label class="motor-label" for="distance-input">Distance</label>
+                    <span id="distance-position" class="motor-percentage">0.0 cm</span>
+                  </div>
+                  <div class="distance-input-row">
+                    <input id="distance-input" class="distance-input" type="number" min="0.1" step="0.1" inputmode="decimal" placeholder="500" />
+                    <span class="distance-unit">cm</span>
+                  </div>
+                </div>
+
+                <div class="button-row direction-select-row">
+                  <button id="distance-cw" class="action-button direction-button" type="button">CW</button>
+                  <button id="distance-ccw" class="action-button direction-button" type="button">CCW</button>
+                </div>
+
+                <button id="distance-start" class="action-button action-on distance-wide-button" type="button">START</button>
+                <button id="distance-stop" class="action-button action-off distance-wide-button" type="button">STOP</button>
+                <button id="distance-zero" class="action-button distance-zero-button distance-wide-button" type="button">ZERO</button>
+
+                <p id="distance-message" class="message" aria-live="polite"></p>
+                <p id="distance-connection-message" class="message connection-message" aria-live="polite"></p>
               </div>
-
-              <p id="message" class="message" aria-live="polite"></p>
-            </div>
-          </section>
-
-          <section class="app-page">
-            <div class="control-card distance-card">
-              <p class="eyebrow">Gauge Glide Traveller</p>
-              <h1>Distance Control</h1>
-
-              <div class="status-panel">
-                <span class="status-label">Current position</span>
-                <span id="distance-position" class="status-value">0.0 cm</span>
-              </div>
-
-              <div class="status-panel">
-                <span class="status-label">Status</span>
-                <span id="distance-status" class="status-value">IDLE</span>
-              </div>
-
-              <label class="distance-label" for="distance-input">Distance</label>
-              <div class="distance-input-row">
-                <input id="distance-input" class="distance-input" type="number" min="0.1" step="0.1" inputmode="decimal" placeholder="500" />
-                <span class="distance-unit">cm</span>
-              </div>
-
-              <div class="button-row direction-select-row">
-                <button id="distance-cw" class="action-button direction-button" type="button">CW</button>
-                <button id="distance-ccw" class="action-button direction-button" type="button">CCW</button>
-              </div>
-
-              <button id="distance-start" class="action-button action-on distance-wide-button" type="button">START</button>
-              <button id="distance-stop" class="action-button action-off distance-wide-button" type="button">STOP</button>
-              <button id="distance-zero" class="action-button distance-zero-button distance-wide-button" type="button">ZERO</button>
-
-              <p id="distance-message" class="message" aria-live="polite"></p>
-            </div>
-          </section>
+            </section>
+          </div>
         </div>
-      </div>
 
-      <div class="page-dots" aria-label="Page selector">
-        <button class="page-dot active" type="button" data-page="0" aria-label="Motor control page" aria-current="true"></button>
-        <button class="page-dot" type="button" data-page="1" aria-label="Distance control page" aria-current="false"></button>
+        <div class="page-dots" aria-label="Page selector">
+          <button class="page-dot active" type="button" data-page="0" aria-label="Motor control page" aria-current="true"></button>
+          <button class="page-dot" type="button" data-page="1" aria-label="Distance control page" aria-current="false"></button>
+        </div>
       </div>
     </main>
 

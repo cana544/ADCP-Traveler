@@ -1,7 +1,9 @@
 const stateElement = document.getElementById("motor-state");
-const wifiSignalElement = document.getElementById("wifi-signal");
-const wifiBarsElement = document.getElementById("wifi-bars");
+const stateElements = Array.from(document.querySelectorAll(".motor-state-value"));
+const wifiSignalElements = Array.from(document.querySelectorAll(".wifi-signal-value"));
+const wifiBarsElements = Array.from(document.querySelectorAll(".wifi-bars"));
 const messageElement = document.getElementById("message");
+const connectionMessageElements = Array.from(document.querySelectorAll(".connection-message"));
 const motorSpeedSlider = document.getElementById("motor-speed-slider");
 const motorSpeedValue = document.getElementById("motor-speed-value");
 const motorControl = document.querySelector(".motor-control");
@@ -83,13 +85,16 @@ function updateMotorSpeedDisplay(speed) {
 
 function updateState(state, speed) {
   const enabled = state === "on";
-  if (!enabled) stateElement.textContent = "OFF";
-  else if (speed > 0) stateElement.textContent = "CW";
-  else if (speed < 0) stateElement.textContent = "CCW";
-  else stateElement.textContent = "STOPPED";
+  let stateText = "STOPPED";
+  if (!enabled) stateText = "OFF";
+  else if (speed > 0) stateText = "CW";
+  else if (speed < 0) stateText = "CCW";
 
-  stateElement.classList.toggle("status-on", enabled);
-  stateElement.classList.toggle("status-off", !enabled);
+  stateElements.forEach((element) => {
+    element.textContent = stateText;
+    element.classList.toggle("status-on", enabled);
+    element.classList.toggle("status-off", !enabled);
+  });
   updateMotorSpeedDisplay(Number.isFinite(speed) ? speed : 0);
 }
 
@@ -120,18 +125,20 @@ function applyStateMessage(data) {
 
 function updateWifiSignal(data) {
   const quality = Number.isFinite(data.quality) ? data.quality : 0;
-  wifiBarsElement.dataset.quality = String(quality);
-  if (!data.connected) {
-    wifiSignalElement.textContent = "No device connected";
-    wifiSignalElement.classList.remove("status-on");
-    wifiSignalElement.classList.add("status-off");
-    return;
-  }
-  wifiSignalElement.textContent = Number.isFinite(data.rssi)
+  const text = !data.connected
+    ? "No device connected"
+    : Number.isFinite(data.rssi)
     ? `${data.label.toUpperCase()} (${data.rssi} dBm)`
     : data.label.toUpperCase();
-  wifiSignalElement.classList.remove("status-off");
-  wifiSignalElement.classList.add("status-on");
+
+  wifiBarsElements.forEach((element) => {
+    element.dataset.quality = String(quality);
+  });
+  wifiSignalElements.forEach((element) => {
+    element.textContent = text;
+    element.classList.toggle("status-on", Boolean(data.connected));
+    element.classList.toggle("status-off", !data.connected);
+  });
 }
 
 async function refreshWifiSignal() {
@@ -140,11 +147,21 @@ async function refreshWifiSignal() {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     updateWifiSignal(await response.json());
   } catch (error) {
-    wifiBarsElement.dataset.quality = "0";
-    wifiSignalElement.textContent = "Unavailable";
-    wifiSignalElement.classList.remove("status-on");
-    wifiSignalElement.classList.add("status-off");
+    wifiBarsElements.forEach((element) => {
+      element.dataset.quality = "0";
+    });
+    wifiSignalElements.forEach((element) => {
+      element.textContent = "Unavailable";
+      element.classList.remove("status-on");
+      element.classList.add("status-off");
+    });
   }
+}
+
+function setConnectionMessage(text) {
+  connectionMessageElements.forEach((element) => {
+    element.textContent = text;
+  });
 }
 
 function connectWebSocket() {
@@ -152,7 +169,7 @@ function connectWebSocket() {
   ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
 
   ws.onopen = () => {
-    messageElement.textContent = "Connected to ESP32 via WebSocket";
+    setConnectionMessage("Connected to ESP32 via WebSocket");
     setButtonsDisabled(false);
     ws.send(JSON.stringify({ cmd: "status" }));
   };
@@ -166,11 +183,11 @@ function connectWebSocket() {
   };
 
   ws.onerror = () => {
-    messageElement.textContent = "WebSocket connection error";
+    setConnectionMessage("WebSocket connection error");
   };
 
   ws.onclose = () => {
-    messageElement.textContent = "Disconnected from ESP32. Reconnecting...";
+    setConnectionMessage("Disconnected from ESP32. Reconnecting...");
     setButtonsDisabled(true);
     setTimeout(connectWebSocket, 3000);
   };
