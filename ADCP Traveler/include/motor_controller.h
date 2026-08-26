@@ -11,9 +11,11 @@ class MotorController {
   void begin(uint8_t rpwmPin, uint8_t lpwmPin, uint8_t renPin, uint8_t lenPin);
   void setEnabled(bool enabled);
   void setSpeed(int speed);
+  void setVoltage(float voltage);
   void stop();
   bool isEnabled() const;
   int currentSpeed() const;
+  int direction() const;
 
  private:
   static constexpr int MAX_DUTY = 255;
