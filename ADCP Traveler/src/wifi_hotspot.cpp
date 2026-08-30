@@ -409,6 +409,10 @@ void WifiHotspot::begin(uint8_t rpwmPin, uint8_t lpwmPin, uint8_t renPin,
   server_.on("/script.js", HTTP_GET, [this](AsyncWebServerRequest* request) {
     serveFile(request, "/script.js", "application/javascript");
   });
+  server_.on("/uoa-logo-white.png", HTTP_GET,
+             [this](AsyncWebServerRequest* request) {
+               serveFile(request, "/uoa-logo-white.png", "image/png");
+             });
 
   server_.on("/motor/on", HTTP_GET,
              [this](AsyncWebServerRequest* request) { handleMotorOn(request); });

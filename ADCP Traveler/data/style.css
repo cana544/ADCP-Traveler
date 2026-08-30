@@ -83,9 +83,9 @@ rect {
 .app-header {
   display: flex;
   justify-content: space-between;
-  gap: 24px;
+  gap: 18px;
   align-items: center;
-  padding: 30px 38px;
+  padding: 24px 32px;
   color: #ffffff;
   background: linear-gradient(90deg, var(--header-start) 0%, var(--header-mid) 53%, var(--header-end) 100%);
 }
@@ -96,14 +96,14 @@ rect {
 }
 
 .brand-block {
-  gap: 24px;
+  gap: 18px;
   min-width: 0;
 }
 
 .brand-logo {
   flex: 0 0 auto;
   width: auto;
-  height: 52px;
+  height: 64px;
   max-width: min(54vw, 300px);
   object-fit: contain;
 }
@@ -124,28 +124,48 @@ rect {
 }
 
 .product-title {
-  font-size: 1.28rem;
+  font-size: 1.08rem;
   font-weight: 700;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.13em;
 }
 
 .product-subtitle {
-  margin-top: 6px;
-  font-size: 0.95rem;
-  letter-spacing: 0.12em;
+  margin-top: 5px;
+  font-size: 0.82rem;
+  letter-spacing: 0.1em;
 }
 
 .header-status {
   display: flex;
   align-items: center;
-  gap: 22px;
+  gap: 16px;
   flex: 0 0 auto;
 }
 
 .header-wifi-icon {
-  width: 30px;
-  height: 30px;
+  width: 26px;
+  height: 26px;
+  color: #ffffff;
   opacity: 0.95;
+}
+
+.header-wifi-icon .wifi-dot,
+.header-wifi-icon .wifi-bar {
+  opacity: 0.2;
+  transition: opacity 0.18s ease;
+}
+
+.header-wifi-icon[data-quality="1"] .wifi-dot,
+.header-wifi-icon[data-quality="2"] .wifi-dot,
+.header-wifi-icon[data-quality="3"] .wifi-dot,
+.header-wifi-icon[data-quality="4"] .wifi-dot,
+.header-wifi-icon[data-quality="2"] .wifi-bar-1,
+.header-wifi-icon[data-quality="3"] .wifi-bar-1,
+.header-wifi-icon[data-quality="4"] .wifi-bar-1,
+.header-wifi-icon[data-quality="3"] .wifi-bar-2,
+.header-wifi-icon[data-quality="4"] .wifi-bar-2,
+.header-wifi-icon[data-quality="4"] .wifi-bar-3 {
+  opacity: 1;
 }
 
 .header-wifi-icon svg,
@@ -176,18 +196,18 @@ rect {
 .connection-indicator {
   display: inline-flex;
   align-items: center;
-  gap: 13px;
-  font-size: 0.98rem;
-  letter-spacing: 0.08em;
+  gap: 10px;
+  font-size: 0.86rem;
+  letter-spacing: 0.06em;
   font-weight: 600;
 }
 
 .indicator-dot {
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   background: #22d062;
-  box-shadow: 0 0 0 6px rgba(34, 208, 98, 0.15);
+  box-shadow: 0 0 0 5px rgba(34, 208, 98, 0.15);
 }
 
 .connection-indicator.disconnected .indicator-dot {
@@ -387,7 +407,7 @@ h2 {
 .arc-widget {
   position: relative;
   margin-top: 20px;
-  min-height: 420px;
+  min-height: 340px;
   user-select: none;
   touch-action: none;
 }
@@ -420,7 +440,7 @@ h2 {
 .arc-readout {
   position: absolute;
   inset: 0;
-  top: 52%;
+  top: 48%;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -540,20 +560,9 @@ h2 {
 
 .direction-button.selected {
   background: linear-gradient(180deg, #f6fbff 0%, #eef8ff 100%);
-  border-color: rgba(77, 158, 216, 0.46);
-  box-shadow: 0 10px 20px rgba(77, 158, 216, 0.14);
-}
-
-#distance-cw.selected {
-  color: var(--green-strong);
-  border-color: rgba(33, 167, 122, 0.38);
-  background: linear-gradient(180deg, rgba(33, 167, 122, 0.08) 0%, rgba(33, 167, 122, 0.14) 100%);
-}
-
-#distance-ccw.selected {
   color: #2f79bf;
   border-color: rgba(47, 121, 191, 0.38);
-  background: linear-gradient(180deg, rgba(47, 121, 191, 0.08) 0%, rgba(47, 121, 191, 0.14) 100%);
+  box-shadow: 0 10px 20px rgba(77, 158, 216, 0.14);
 }
 
 .button-icon {
@@ -781,12 +790,15 @@ h2 {
   }
 
   .app-header {
-    gap: 12px;
-    padding: 12px 14px;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
   }
 
   .brand-block {
-    gap: 12px;
+    flex: 1 1 auto;
+    gap: 9px;
     align-items: center;
     flex-wrap: nowrap;
   }
@@ -796,37 +808,43 @@ h2 {
   }
 
   .brand-logo {
-    height: 28px;
+    height: 44px;
     max-width: 48vw;
   }
 
   .product-title {
-    font-size: 0.92rem;
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
   }
 
   .product-subtitle {
-    font-size: 0.7rem;
-    margin-top: 3px;
+    font-size: 0.48rem;
+    margin-top: 2px;
+    letter-spacing: 0.06em;
   }
 
   .header-status {
-    gap: 12px;
+    flex: 0 0 auto;
+    width: auto;
+    gap: 6px;
+    justify-content: flex-end;
   }
 
   .header-wifi-icon {
-    width: 24px;
-    height: 24px;
+    width: 16px;
+    height: 16px;
   }
 
   .connection-indicator {
-    gap: 8px;
-    font-size: 0.86rem;
+    gap: 5px;
+    font-size: 0.56rem;
+    letter-spacing: 0.04em;
   }
 
   .indicator-dot {
-    width: 14px;
-    height: 14px;
-    box-shadow: 0 0 0 4px rgba(34, 208, 98, 0.15);
+    width: 10px;
+    height: 10px;
+    box-shadow: 0 0 0 2px rgba(34, 208, 98, 0.15);
   }
 
   .page-content {
@@ -915,7 +933,7 @@ h2 {
   }
 
   .arc-widget {
-    min-height: 180px;
+    min-height: 148px;
     margin-top: 6px;
   }
 
@@ -924,8 +942,13 @@ h2 {
   }
 
   .arc-caption {
-    margin-top: 8px;
-    font-size: 0.88rem;
+    margin-top: 5px;
+    font-size: 0.78rem;
+  }
+
+  .arc-axis-label {
+    bottom: 2px;
+    font-size: 0.84rem;
   }
 
   .action-button {
@@ -984,14 +1007,16 @@ h2 {
   }
 
   .nav-button {
-    min-height: 58px;
-    gap: 4px;
-    padding: 7px 8px 8px;
-    font-size: 0.78rem;
+    min-height: 86px;
+    justify-content: flex-start;
+    gap: 5px;
+    padding: 9px 8px 18px;
+    font-size: 0.9rem;
   }
 
   .nav-icon {
-    width: 26px;
-    height: 26px;
+    width: 28px;
+    height: 28px;
+    margin-top: 1px;
   }
 }

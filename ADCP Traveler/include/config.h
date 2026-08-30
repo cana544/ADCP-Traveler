@@ -5,7 +5,7 @@
 
 namespace Config {
 namespace Wifi {
-constexpr char AP_SSID[] = "ESP32-Motor-Control";
+constexpr char AP_SSID[] = "Gauge Glide Traveller";
 constexpr char AP_PASSWORD[] = "password";
 }  // namespace Wifi
 

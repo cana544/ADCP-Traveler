@@ -10,7 +10,7 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <title>Gauge Glide</title>
-    <link rel="stylesheet" href="/style.css?v=ui-refresh-2" />
+    <link rel="stylesheet" href="/style.css?v=ui-refresh-9" />
   </head>
   <body>
     <main class="app-shell">
@@ -28,10 +28,10 @@
           <div class="header-status">
             <div class="header-wifi-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" role="presentation">
-                <path d="M12 18.2a1.7 1.7 0 1 0 0 3.4 1.7 1.7 0 0 0 0-3.4Z" />
-                <path d="M7.6 14.7a6.2 6.2 0 0 1 8.8 0" />
-                <path d="M4.6 11.4a10.6 10.6 0 0 1 14.8 0" />
-                <path d="M1.8 8.2a14.6 14.6 0 0 1 20.4 0" />
+                <path class="wifi-dot" d="M12 18.2a1.7 1.7 0 1 0 0 3.4 1.7 1.7 0 0 0 0-3.4Z" />
+                <path class="wifi-bar wifi-bar-1" d="M7.6 14.7a6.2 6.2 0 0 1 8.8 0" />
+                <path class="wifi-bar wifi-bar-2" d="M4.6 11.4a10.6 10.6 0 0 1 14.8 0" />
+                <path class="wifi-bar wifi-bar-3" d="M1.8 8.2a14.6 14.6 0 0 1 20.4 0" />
               </svg>
             </div>
             <div class="connection-indicator connected" id="connection-pill">
@@ -61,24 +61,7 @@
                   </button>
                 </div>
 
-                <section class="status-card status-card-two" aria-label="System status">
-                  <div class="status-item">
-                    <div class="status-icon status-icon-wifi" aria-hidden="true">
-                      <svg viewBox="0 0 24 24" role="presentation">
-                        <path d="M12 18.2a1.7 1.7 0 1 0 0 3.4 1.7 1.7 0 0 0 0-3.4Z" />
-                        <path d="M7.6 14.7a6.2 6.2 0 0 1 8.8 0" />
-                        <path d="M4.6 11.4a10.6 10.6 0 0 1 14.8 0" />
-                        <path d="M1.8 8.2a14.6 14.6 0 0 1 20.4 0" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p class="status-label">Wi-Fi Signal</p>
-                      <p class="status-value wifi-signal-value status-accent">Checking...</p>
-                    </div>
-                  </div>
-
-                  <div class="status-divider" aria-hidden="true"></div>
-
+                <section class="status-card" aria-label="System status">
                   <div class="status-item">
                     <div class="status-icon status-icon-motor" aria-hidden="true">M</div>
                     <div>
@@ -95,7 +78,7 @@
                   </div>
 
                   <div class="arc-widget motor-control" id="motor-arc-control" data-direction="stop">
-                    <svg id="motor-arc-svg" class="arc-svg" viewBox="0 0 400 240" aria-hidden="true">
+                    <svg id="motor-arc-svg" class="arc-svg" viewBox="0 0 400 190" aria-hidden="true">
                       <defs>
                         <linearGradient id="speedArcGradient" x1="0%" y1="50%" x2="100%" y2="50%">
                           <stop offset="0%" stop-color="#4d9ed8" />
@@ -108,11 +91,11 @@
                       </defs>
                       <path
                         id="motor-arc-track"
-                        d="M 35 190 A 165 165 0 0 1 365 190"
+                        d="M 45 105.5 A 165 130 0 0 1 355 105.5"
                         class="arc-track"
                       />
                       <g id="motor-arc-ticks" class="arc-ticks"></g>
-                      <circle id="motor-arc-knob" class="arc-knob" cx="200" cy="25" r="16" />
+                      <circle id="motor-arc-knob" class="arc-knob" cx="200" cy="20" r="16" />
                     </svg>
 
                     <div class="arc-readout">
@@ -179,24 +162,7 @@
                   </button>
                 </div>
 
-                <section class="status-card status-card-three" aria-label="Distance status">
-                  <div class="status-item">
-                    <div class="status-icon status-icon-wifi" aria-hidden="true">
-                      <svg viewBox="0 0 24 24" role="presentation">
-                        <path d="M12 18.2a1.7 1.7 0 1 0 0 3.4 1.7 1.7 0 0 0 0-3.4Z" />
-                        <path d="M7.6 14.7a6.2 6.2 0 0 1 8.8 0" />
-                        <path d="M4.6 11.4a10.6 10.6 0 0 1 14.8 0" />
-                        <path d="M1.8 8.2a14.6 14.6 0 0 1 20.4 0" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p class="status-label">Wi-Fi Signal</p>
-                      <p class="status-value wifi-signal-value status-accent">Checking...</p>
-                    </div>
-                  </div>
-
-                  <div class="status-divider" aria-hidden="true"></div>
-
+                <section class="status-card" aria-label="Distance status">
                   <div class="status-item">
                     <div class="status-icon status-icon-state" aria-hidden="true">
                       <svg viewBox="0 0 24 24" role="presentation">
@@ -210,20 +176,6 @@
                     </div>
                   </div>
 
-                  <div class="status-divider" aria-hidden="true"></div>
-
-                  <div class="status-item">
-                    <div class="status-icon status-icon-distance" aria-hidden="true">
-                      <svg viewBox="0 0 24 24" role="presentation">
-                        <circle cx="12" cy="12" r="8" />
-                        <circle cx="12" cy="12" r="3" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p class="status-label">Distance Status</p>
-                      <p id="distance-status" class="status-value">IDLE</p>
-                    </div>
-                  </div>
                 </section>
 
                 <section class="distance-panel">
@@ -332,6 +284,6 @@
       </div>
     </main>
 
-    <script src="/script.js?v=ui-refresh-2"></script>
+    <script src="/script.js?v=ui-refresh-9"></script>
   </body>
 </html>

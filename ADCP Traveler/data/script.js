@@ -10,6 +10,7 @@ const motorArcSvg = document.getElementById('motor-arc-svg');
 const motorArcKnob = document.getElementById('motor-arc-knob');
 const motorArcTicks = document.getElementById('motor-arc-ticks');
 const motorArcHitArea = document.getElementById('motor-arc-hit-area');
+const headerWifiIcon = document.querySelector('.header-wifi-icon');
 const pageWindow = document.getElementById('page-window');
 const pageTrack = document.getElementById('page-track');
 const pageButtons = Array.from(document.querySelectorAll('.nav-button'));
@@ -43,10 +44,14 @@ let motorEnabled = false;
 
 const arcConfig = {
   cx: 200,
-  cy: 190,
-  radius: 165,
-  minAngle: 180,
-  maxAngle: 0,
+  cy: 150,
+  radiusX: 165,
+  radiusY: 130,
+  minAngle: 160,
+  maxAngle: 20,
+  trackTolerance: 18,
+  dragTolerance: 72,
+  knobTolerance: 26,
 };
 
 function clamp(value, min, max) {
@@ -65,23 +70,56 @@ function titleCase(text) {
 
 function valueToAngle(speed) {
   const normalised = clamp(speed, -255, 255) / 255;
-  return 90 - normalised * 90;
+  const midpoint = (arcConfig.minAngle + arcConfig.maxAngle) / 2;
+  const halfSpan = (arcConfig.minAngle - arcConfig.maxAngle) / 2;
+  return midpoint - normalised * halfSpan;
 }
 
 function angleToPoint(angleDegrees) {
   const radians = (angleDegrees * Math.PI) / 180;
   return {
-    x: arcConfig.cx + arcConfig.radius * Math.cos(radians),
-    y: arcConfig.cy - arcConfig.radius * Math.sin(radians),
+    x: arcConfig.cx + arcConfig.radiusX * Math.cos(radians),
+    y: arcConfig.cy - arcConfig.radiusY * Math.sin(radians),
   };
 }
 
 function pointToSpeed(x, y) {
-  const dx = x - arcConfig.cx;
-  const dy = arcConfig.cy - y;
-  const angle = clamp((Math.atan2(dy, dx) * 180) / Math.PI, 0, 180);
-  const normalised = (90 - angle) / 90;
+  const dx = (x - arcConfig.cx) / arcConfig.radiusX;
+  const dy = (arcConfig.cy - y) / arcConfig.radiusY;
+  const angle = clamp(
+    (Math.atan2(dy, dx) * 180) / Math.PI,
+    arcConfig.maxAngle,
+    arcConfig.minAngle
+  );
+  const midpoint = (arcConfig.minAngle + arcConfig.maxAngle) / 2;
+  const halfSpan = (arcConfig.minAngle - arcConfig.maxAngle) / 2;
+  const normalised = (midpoint - angle) / halfSpan;
   return Math.round(clamp(normalised, -1, 1) * 255);
+}
+
+function eventToArcPoint(event) {
+  const rect = motorArcSvg.getBoundingClientRect();
+  return {
+    x: ((event.clientX - rect.left) / rect.width) * 400,
+    y: ((event.clientY - rect.top) / rect.height) * 190,
+  };
+}
+
+function isPointOnArcControl(event, trackTolerance = arcConfig.trackTolerance) {
+  const point = eventToArcPoint(event);
+  const knobX = Number.parseFloat(motorArcKnob.getAttribute('cx'));
+  const knobY = Number.parseFloat(motorArcKnob.getAttribute('cy'));
+  const knobDistance = Math.hypot(point.x - knobX, point.y - knobY);
+
+  if (knobDistance <= arcConfig.knobTolerance) return true;
+
+  const dx = (point.x - arcConfig.cx) / arcConfig.radiusX;
+  const dy = (arcConfig.cy - point.y) / arcConfig.radiusY;
+  const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+  if (angle < arcConfig.maxAngle || angle > arcConfig.minAngle) return false;
+
+  const nearestPoint = angleToPoint(angle);
+  return Math.hypot(point.x - nearestPoint.x, point.y - nearestPoint.y) <= trackTolerance;
 }
 
 function renderArcTicks() {
@@ -91,10 +129,12 @@ function renderArcTicks() {
   tickValues.forEach((value) => {
     const angle = valueToAngle(value);
     const outerPoint = angleToPoint(angle);
-    const innerRadius = value === 0 ? arcConfig.radius - 24 : arcConfig.radius - 15;
+    const radiusOffset = value === 0 ? 24 : 15;
+    const innerRadiusX = arcConfig.radiusX - radiusOffset;
+    const innerRadiusY = arcConfig.radiusY - radiusOffset;
     const innerPoint = {
-      x: arcConfig.cx + innerRadius * Math.cos((angle * Math.PI) / 180),
-      y: arcConfig.cy - innerRadius * Math.sin((angle * Math.PI) / 180),
+      x: arcConfig.cx + innerRadiusX * Math.cos((angle * Math.PI) / 180),
+      y: arcConfig.cy - innerRadiusY * Math.sin((angle * Math.PI) / 180),
     };
 
     const tick = document.createElementNS('http://www.w3.org/2000/svg', 'line');
@@ -168,6 +208,7 @@ function updateState(state, speed) {
 }
 
 function setDistanceStatusTone(statusText) {
+  if (!distanceStatus) return;
   const normalised = (statusText || '').toUpperCase();
   distanceStatus.classList.remove('status-on', 'status-off', 'status-accent');
 
@@ -186,8 +227,10 @@ function updateDistanceState(data) {
   }
 
   if (typeof data.distanceStatus === 'string') {
-    distanceStatus.textContent = data.distanceStatus.toUpperCase();
-    setDistanceStatusTone(data.distanceStatus);
+    if (distanceStatus) {
+      distanceStatus.textContent = data.distanceStatus.toUpperCase();
+      setDistanceStatusTone(data.distanceStatus);
+    }
   }
 
   const active = Boolean(data.distanceActive);
@@ -209,6 +252,7 @@ function applyStateMessage(data) {
 
 function updateWifiSignal(data) {
   const connected = Boolean(data.connected);
+  let quality = 0;
   let text = 'Unavailable';
 
   if (!connected) {
@@ -217,6 +261,14 @@ function updateWifiSignal(data) {
     text = titleCase(data.label);
   } else {
     text = 'Connected';
+  }
+
+  if (connected && Number.isFinite(data.quality)) {
+    quality = clamp(Math.round(data.quality), 1, 4);
+  }
+
+  if (headerWifiIcon) {
+    headerWifiIcon.dataset.quality = String(quality);
   }
 
   wifiSignalElements.forEach((element) => {
@@ -392,9 +444,9 @@ function toggleSystemPower() {
 }
 
 function selectDistanceDirection(direction) {
-  selectedDistanceDirection = direction;
-  distanceCwButton.classList.toggle('selected', direction === 'cw');
-  distanceCcwButton.classList.toggle('selected', direction === 'ccw');
+  selectedDistanceDirection = selectedDistanceDirection === direction ? null : direction;
+  distanceCwButton.classList.toggle('selected', selectedDistanceDirection === 'cw');
+  distanceCcwButton.classList.toggle('selected', selectedDistanceDirection === 'ccw');
 }
 
 function startDistanceMove() {
@@ -422,11 +474,7 @@ function zeroDistancePosition() {
 }
 
 function updateArcFromPointerEvent(event) {
-  const rect = motorArcSvg.getBoundingClientRect();
-  const clientX = event.clientX;
-  const clientY = event.clientY;
-  const x = ((clientX - rect.left) / rect.width) * 400;
-  const y = ((clientY - rect.top) / rect.height) * 240;
+  const { x, y } = eventToArcPoint(event);
   const speed = pointToSpeed(x, y);
 
   updateMotorSpeedDisplay(speed);
@@ -435,6 +483,7 @@ function updateArcFromPointerEvent(event) {
 }
 
 function beginArcDrag(event) {
+  if (!isPointOnArcControl(event)) return;
   isUserDragging = true;
   event.preventDefault();
   motorArcHitArea.setPointerCapture(event.pointerId);
@@ -443,6 +492,10 @@ function beginArcDrag(event) {
 
 function continueArcDrag(event) {
   if (!isUserDragging) return;
+  if (!isPointOnArcControl(event, arcConfig.dragTolerance)) {
+    endArcDrag(event);
+    return;
+  }
   updateArcFromPointerEvent(event);
 }
 
