@@ -197,8 +197,8 @@ void WifiHotspot::sendWifiSignalResponse(AsyncWebServerRequest* request) {
   }
 
   String response = "{\"connected\":true,\"rssi\":" + String(rssi) +
-                    ",\"quality\":" + String(quality) +
-                    ",\"label\":\"" + label + "\"}";
+                    ",\"quality\":" + String(quality) + ",\"label\":\"" +
+                    label + "\"}";
   request->send(200, "application/json", response);
 }
 
@@ -272,7 +272,9 @@ void WifiHotspot::handleDistanceStart(AsyncWebServerRequest* request) {
 
   const float distanceCm = request->getParam("distance")->value().toFloat();
   const String directionText = request->getParam("direction")->value();
-  const int direction = directionText == "cw" ? 1 : directionText == "ccw" ? -1 : 0;
+  const int direction = directionText == "cw"    ? 1
+                        : directionText == "ccw" ? -1
+                                                 : 0;
 
   if (!startDistanceMove(distanceCm, direction)) {
     request->send(409, "application/json",
@@ -346,11 +348,12 @@ void WifiHotspot::handleWebSocketEvent(AsyncWebSocketClient* client,
         motorController_.stop();
         motorController_.setEnabled(false);
       } else if (strcmp(cmd, "distance_start") == 0 &&
-                 doc.containsKey("distanceCm") && doc.containsKey("direction")) {
+                 doc.containsKey("distanceCm") &&
+                 doc.containsKey("direction")) {
         const char* directionText = doc["direction"];
-        const int direction = strcmp(directionText, "cw") == 0
-                                  ? 1
-                                  : strcmp(directionText, "ccw") == 0 ? -1 : 0;
+        const int direction = strcmp(directionText, "cw") == 0    ? 1
+                              : strcmp(directionText, "ccw") == 0 ? -1
+                                                                  : 0;
         startDistanceMove(doc["distanceCm"].as<float>(), direction);
       } else if (strcmp(cmd, "distance_stop") == 0) {
         stopDistanceMove();
@@ -383,7 +386,8 @@ void WifiHotspot::begin(uint8_t rpwmPin, uint8_t lpwmPin, uint8_t renPin,
   encoder_.begin(Config::Pins::ENCODER);
 
   WiFi.mode(WIFI_AP);
-  const bool started = WiFi.softAP(Config::Wifi::AP_SSID, Config::Wifi::AP_PASSWORD);
+  const bool started =
+      WiFi.softAP(Config::Wifi::AP_SSID, Config::Wifi::AP_PASSWORD);
   if (!started) {
     Serial.println("Failed to start access point");
     return;
@@ -414,26 +418,36 @@ void WifiHotspot::begin(uint8_t rpwmPin, uint8_t lpwmPin, uint8_t renPin,
                serveFile(request, "/uoa-logo-white.png", "image/png");
              });
 
-  server_.on("/motor/on", HTTP_GET,
-             [this](AsyncWebServerRequest* request) { handleMotorOn(request); });
-  server_.on("/motor/off", HTTP_GET,
-             [this](AsyncWebServerRequest* request) { handleMotorOff(request); });
-  server_.on("/motor/status", HTTP_GET,
-             [this](AsyncWebServerRequest* request) { handleMotorStatus(request); });
-  server_.on("/motor/speed", HTTP_GET,
-             [this](AsyncWebServerRequest* request) { handleMotorSpeed(request); });
+  server_.on("/motor/on", HTTP_GET, [this](AsyncWebServerRequest* request) {
+    handleMotorOn(request);
+  });
+  server_.on("/motor/off", HTTP_GET, [this](AsyncWebServerRequest* request) {
+    handleMotorOff(request);
+  });
+  server_.on("/motor/status", HTTP_GET, [this](AsyncWebServerRequest* request) {
+    handleMotorStatus(request);
+  });
+  server_.on("/motor/speed", HTTP_GET, [this](AsyncWebServerRequest* request) {
+    handleMotorSpeed(request);
+  });
 
-  server_.on("/distance/start", HTTP_GET,
-             [this](AsyncWebServerRequest* request) { handleDistanceStart(request); });
-  server_.on("/distance/stop", HTTP_GET,
-             [this](AsyncWebServerRequest* request) { handleDistanceStop(request); });
-  server_.on("/distance/zero", HTTP_GET,
-             [this](AsyncWebServerRequest* request) { handleDistanceZero(request); });
+  server_.on(
+      "/distance/start", HTTP_GET,
+      [this](AsyncWebServerRequest* request) { handleDistanceStart(request); });
+  server_.on(
+      "/distance/stop", HTTP_GET,
+      [this](AsyncWebServerRequest* request) { handleDistanceStop(request); });
+  server_.on(
+      "/distance/zero", HTTP_GET,
+      [this](AsyncWebServerRequest* request) { handleDistanceZero(request); });
   server_.on("/distance/status", HTTP_GET,
-             [this](AsyncWebServerRequest* request) { handleDistanceStatus(request); });
+             [this](AsyncWebServerRequest* request) {
+               handleDistanceStatus(request);
+             });
 
-  server_.on("/wifi/signal", HTTP_GET,
-             [this](AsyncWebServerRequest* request) { handleWifiSignal(request); });
+  server_.on("/wifi/signal", HTTP_GET, [this](AsyncWebServerRequest* request) {
+    handleWifiSignal(request);
+  });
   server_.onNotFound(
       [this](AsyncWebServerRequest* request) { handleNotFound(request); });
 
@@ -448,7 +462,8 @@ void WifiHotspot::begin(uint8_t rpwmPin, uint8_t lpwmPin, uint8_t renPin,
 
 void WifiHotspot::update() {
   const uint32_t nowUs = micros();
-  if ((uint32_t)(nowUs - lastControlUs_) >= Config::Control::CONTROL_PERIOD_US) {
+  if ((uint32_t)(nowUs - lastControlUs_) >=
+      Config::Control::CONTROL_PERIOD_US) {
     lastControlUs_ += Config::Control::CONTROL_PERIOD_US;
     encoder_.update();
     distanceController_.update();
