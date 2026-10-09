@@ -334,8 +334,10 @@ function setConnectionMessage(text) {
 
 function showPage(pageIndex) {
   currentPage = clamp(pageIndex, 0, pageButtons.length - 1);
-  pageTrack.style.transform = `translateX(-${currentPage * (100 / pageButtons.length)}%)`;
   Array.from(pageTrack.querySelectorAll('.app-page')).forEach((page, index) => {
+    // Animate each page independently so nonadjacent tabs never travel through
+    // the intervening page. Offscreen pages stay on their navigation side.
+    page.style.transform = `translateX(${index === currentPage ? 0 : index < currentPage ? -100 : 100}%)`;
     page.setAttribute('aria-hidden', String(index !== currentPage));
     page.inert = index !== currentPage;
   });

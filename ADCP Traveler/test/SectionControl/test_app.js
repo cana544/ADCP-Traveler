@@ -58,16 +58,28 @@ test('older HTTP snapshot cannot undo newer STOP or completion state', () => {
 test('third tab uses full page width and makes other controls inert', () => {
   const { api, nodes, pages } = app();
   api.showPage(2);
-  assert.equal(nodes.get('page-track').style.transform, 'translateX(-66.66666666666667%)');
+  assert.equal(pages[2].style.transform, 'translateX(0%)');
   assert.equal(pages[2].inert, false);
   assert.equal(pages[0].inert, true);
 });
 test('swiping section details does not change tabs', () => {
-  const { api, nodes } = app();
+  const { api, pages } = app();
   api.showPage(2);
   api.handleSwipeStart({ target: { closest() { return true; } }, clientX: 300, clientY: 100 });
   api.handleSwipeEnd({ clientX: 400, clientY: 100 });
-  assert.equal(nodes.get('page-track').style.transform, 'translateX(-66.66666666666667%)');
+  assert.equal(pages[2].style.transform, 'translateX(0%)');
+});
+
+test('Speed and Section slide directly one page width in both directions', () => {
+  const { api, pages } = app();
+  api.showPage(2);
+  assert.equal(pages[0].style.transform, 'translateX(-100%)');
+  assert.equal(pages[2].style.transform, 'translateX(0%)');
+  assert.equal(pages[1].attributes['aria-hidden'], 'true');
+  api.showPage(0);
+  assert.equal(pages[2].style.transform, 'translateX(100%)');
+  assert.equal(pages[0].style.transform, 'translateX(0%)');
+  assert.equal(pages[1].attributes['aria-hidden'], 'true');
 });
 test('live-socket STOP does not enqueue a second delayed HTTP STOP', async () => {
   const urls = [];
