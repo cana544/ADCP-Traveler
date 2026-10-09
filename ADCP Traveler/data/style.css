@@ -81,7 +81,8 @@ rect {
 }
 
 .app-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   justify-content: space-between;
   gap: 18px;
   align-items: center;
@@ -110,6 +111,7 @@ rect {
 
 .product-copy {
   min-width: 0;
+  text-align: center;
 }
 
 .product-title,
@@ -140,6 +142,7 @@ rect {
   align-items: center;
   gap: 16px;
   flex: 0 0 auto;
+  justify-self: end;
 }
 
 .header-wifi-icon {
@@ -147,6 +150,50 @@ rect {
   height: 26px;
   color: #ffffff;
   opacity: 0.95;
+}
+
+.header-battery {
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+}
+
+.header-battery svg {
+  width: 100%;
+  height: 100%;
+}
+
+.battery-terminal {
+  fill: #ffffff;
+}
+
+.battery-outline {
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 1.4;
+}
+
+.battery-fill {
+  fill: #22d062;
+}
+
+.header-wifi-icon[data-connected="false"] {
+  color: #8591a4;
+}
+
+.header-wifi-icon[data-connected="false"] .wifi-dot,
+.header-wifi-icon[data-connected="false"] .wifi-bar {
+  opacity: 0.65;
+}
+
+.header-wifi-icon .wifi-disconnected-cross {
+  display: none;
+  stroke: var(--red);
+  stroke-width: 3;
+}
+
+.header-wifi-icon[data-connected="false"] .wifi-disconnected-cross {
+  display: block;
 }
 
 .header-wifi-icon .wifi-dot,
@@ -193,27 +240,8 @@ rect {
   stroke-linejoin: round;
 }
 
-.connection-indicator {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 0.86rem;
-  letter-spacing: 0.06em;
-  font-weight: 600;
-}
 
-.indicator-dot {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: #22d062;
-  box-shadow: 0 0 0 5px rgba(34, 208, 98, 0.15);
-}
 
-.connection-indicator.disconnected .indicator-dot {
-  background: var(--red);
-  box-shadow: 0 0 0 6px rgba(239, 62, 68, 0.16);
-}
 
 .page-viewport {
   overflow: hidden;
@@ -809,7 +837,7 @@ h2 {
 
   .brand-logo {
     height: 44px;
-    max-width: 48vw;
+    max-width: 28vw;
   }
 
   .product-title {
@@ -831,21 +859,16 @@ h2 {
   }
 
   .header-wifi-icon {
-    width: 16px;
-    height: 16px;
+    width: 22px;
+    height: 22px;
   }
 
-  .connection-indicator {
-    gap: 5px;
-    font-size: 0.56rem;
-    letter-spacing: 0.04em;
+  .header-battery {
+    width: 22px;
+    height: 22px;
   }
 
-  .indicator-dot {
-    width: 10px;
-    height: 10px;
-    box-shadow: 0 0 0 2px rgba(34, 208, 98, 0.15);
-  }
+
 
   .page-content {
     padding: 10px 12px 8px;

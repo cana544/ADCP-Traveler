@@ -64,7 +64,7 @@ if (!html.includes('src="/uoa-logo-white.png"')) {
   fail("Expected the header to render the inverted University of Auckland PNG logo asset.");
 }
 
-if (!html.includes("ui-refresh-9")) {
+if (!html.includes('/style.css?v=ui-refresh-15') || !html.includes('/script.js?v=ui-refresh-15')) {
   fail("Expected static asset URLs to use the latest cache-busting version.");
 }
 
@@ -131,12 +131,12 @@ if (!mediaHasDeclaration("(max-width: 640px)", ".arc-widget", "min-height", "148
   fail("Expected the speed control arc to be flatter to free space for controls.");
 }
 
-if (!html.includes('<div class="arc-axis-label arc-axis-left">CCW</div>')) {
-  fail("Expected the speed control page to keep the CCW side indicator label.");
+if (!html.includes('<div class="arc-axis-label arc-axis-left">LB</div>')) {
+  fail("Expected the speed control page to keep the LB side indicator label.");
 }
 
-if (!html.includes('<div class="arc-axis-label arc-axis-right">CW</div>')) {
-  fail("Expected the speed control page to keep the CW side indicator label.");
+if (!html.includes('<div class="arc-axis-label arc-axis-right">RB</div>')) {
+  fail("Expected the speed control page to keep the RB side indicator label.");
 }
 
 if (html.includes("arc-axis-centre") || html.includes("motor-direction-display")) {
@@ -156,7 +156,7 @@ if (!mediaHasDeclaration("(max-width: 640px)", ".nav-icon", "width", "28px")) {
 }
 
 if (css.includes("#distance-cw.selected") || !css.includes(".direction-button.selected")) {
-  fail("Expected CW and CCW selected direction buttons to share the same selected colour.");
+  fail("Expected RB and LB selected direction buttons to share the same selected colour.");
 }
 
 if (!mediaHasDeclaration("(max-width: 640px)", ".distance-columns", "grid-template-columns", "minmax(0, 1fr) auto")) {

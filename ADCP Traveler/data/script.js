@@ -17,8 +17,6 @@ const pageButtons = Array.from(document.querySelectorAll('.nav-button'));
 const actionButtons = Array.from(document.querySelectorAll('.action-button'));
 const systemToggleButtons = Array.from(document.querySelectorAll('.system-toggle'));
 const systemToggleLabels = Array.from(document.querySelectorAll('.system-toggle-label'));
-const connectionPill = document.getElementById('connection-pill');
-const connectionStatusLabel = document.getElementById('connection-status-label');
 
 const distanceInput = document.getElementById('distance-input');
 const distanceCwButton = document.getElementById('distance-cw');
@@ -128,13 +126,22 @@ function renderArcTicks() {
 
   tickValues.forEach((value) => {
     const angle = valueToAngle(value);
-    const outerPoint = angleToPoint(angle);
-    const radiusOffset = value === 0 ? 24 : 15;
-    const innerRadiusX = arcConfig.radiusX - radiusOffset;
-    const innerRadiusY = arcConfig.radiusY - radiusOffset;
+    const point = angleToPoint(angle);
+    const radians = (angle * Math.PI) / 180;
+    // Centre each notch across the track, perpendicular to the ellipse.
+    const normalX = Math.cos(radians) / arcConfig.radiusX;
+    const normalY = -Math.sin(radians) / arcConfig.radiusY;
+    const normalLength = Math.hypot(normalX, normalY);
+    const halfLength = (value === 0 ? 24 : 15) / 2;
+    const offsetX = (normalX / normalLength) * halfLength;
+    const offsetY = (normalY / normalLength) * halfLength;
     const innerPoint = {
-      x: arcConfig.cx + innerRadiusX * Math.cos((angle * Math.PI) / 180),
-      y: arcConfig.cy - innerRadiusY * Math.sin((angle * Math.PI) / 180),
+      x: point.x - offsetX,
+      y: point.y - offsetY,
+    };
+    const outerPoint = {
+      x: point.x + offsetX,
+      y: point.y + offsetY,
     };
 
     const tick = document.createElementNS('http://www.w3.org/2000/svg', 'line');
@@ -169,14 +176,14 @@ function updateSystemToggleDisplay(enabled) {
 function updateMotorSpeedDisplay(speed) {
   currentSpeed = clamp(Number.isFinite(speed) ? speed : 0, -255, 255);
   const percentage = Math.round((Math.abs(currentSpeed) / 255) * 100);
-  let direction = 'STOP';
+  let direction = 'Stopped';
 
-  if (currentSpeed > 0) direction = 'CW';
-  else if (currentSpeed < 0) direction = 'CCW';
+  if (currentSpeed > 0) direction = 'Right Bank';
+  else if (currentSpeed < 0) direction = 'Left Bank';
 
-  motorSpeedValue.textContent = currentSpeed === 0 ? 'STOP' : direction;
+  motorSpeedValue.textContent = currentSpeed === 0 ? 'Stopped' : direction;
   motorSpeedPercent.textContent = `${percentage}%`;
-  motorControl.dataset.direction = direction.toLowerCase();
+  motorControl.dataset.direction = currentSpeed > 0 ? 'rb' : currentSpeed < 0 ? 'lb' : 'stop';
   positionArcKnob(currentSpeed);
 
   if (!isUserDragging) {
@@ -189,12 +196,12 @@ function updateMotorSpeedDisplay(speed) {
 
 function updateState(state, speed) {
   const enabled = state === 'on';
-  let stateText = 'OFF';
+  let stateText = 'STOPPED';
 
   if (enabled) {
-    if (speed > 0) stateText = 'CW';
-    else if (speed < 0) stateText = 'CCW';
-    else stateText = 'STOP';
+    if (speed > 0) stateText = 'Right Bank';
+    else if (speed < 0) stateText = 'Left Bank';
+    else stateText = 'STOPPED';
   }
 
   stateElements.forEach((element) => {
@@ -222,8 +229,9 @@ function setDistanceStatusTone(statusText) {
 }
 
 function updateDistanceState(data) {
+  const active = Boolean(data.distanceActive);
   if (Number.isFinite(data.positionCm)) {
-    distancePosition.textContent = `${data.positionCm.toFixed(1)} cm`;
+    distancePosition.textContent = `${data.positionCm.toFixed(active ? 1 : 0)} cm`;
   }
 
   if (typeof data.distanceStatus === 'string') {
@@ -233,7 +241,6 @@ function updateDistanceState(data) {
     }
   }
 
-  const active = Boolean(data.distanceActive);
   distanceInput.disabled = active;
   distanceCwButton.disabled = active;
   distanceCcwButton.disabled = active;
@@ -243,6 +250,11 @@ function updateDistanceState(data) {
 }
 
 function applyStateMessage(data) {
+  if (typeof data.error === 'string') {
+    messageElement.textContent = data.error;
+    distanceMessage.textContent = data.error;
+    return;
+  }
   if (data.state !== undefined && data.speed !== undefined) {
     updateState(data.state, data.speed);
   }
@@ -269,6 +281,8 @@ function updateWifiSignal(data) {
 
   if (headerWifiIcon) {
     headerWifiIcon.dataset.quality = String(quality);
+    headerWifiIcon.dataset.connected = String(connected);
+    headerWifiIcon.setAttribute('aria-label', connected ? `Wi-Fi ${text}` : 'Wi-Fi Disconnected');
   }
 
   wifiSignalElements.forEach((element) => {
@@ -288,10 +302,9 @@ async function refreshWifiSignal() {
   }
 }
 
-function setConnectionState(isConnected, labelText) {
-  connectionPill.classList.toggle('connected', isConnected);
-  connectionPill.classList.toggle('disconnected', !isConnected);
-  connectionStatusLabel.textContent = labelText;
+function setConnectionState(isConnected) {
+  if (!isConnected) updateWifiSignal({ connected: false });
+  else refreshWifiSignal();
 }
 
 function setConnectionMessage(text) {
@@ -347,7 +360,7 @@ function connectWebSocket() {
 
   ws.onopen = () => {
     setConnectionState(true, 'CONNECTED');
-    setConnectionMessage('Connected to ESP32');
+    setConnectionMessage('Connected To ESP32');
     setButtonsDisabled(false);
     ws.send(JSON.stringify({ cmd: 'status' }));
   };
@@ -362,12 +375,12 @@ function connectWebSocket() {
 
   ws.onerror = () => {
     setConnectionState(false, 'CONNECTION ERROR');
-    setConnectionMessage('WebSocket connection error');
+    setConnectionMessage('WebSocket Connection Error');
   };
 
   ws.onclose = () => {
     setConnectionState(false, 'DISCONNECTED');
-    setConnectionMessage('Disconnected from ESP32. Reconnecting...');
+    setConnectionMessage('Disconnected From ESP32. Reconnecting');
     setButtonsDisabled(true);
     setTimeout(connectWebSocket, 3000);
   };
@@ -404,7 +417,8 @@ async function sendHttpCommand(cmd) {
     if (cmd.cmd.startsWith('distance_')) {
       distanceMessage.textContent = error.message;
     } else {
-      messageElement.textContent = 'Motor command failed';
+      messageElement.textContent = error.message === 'Enable Traveller First'
+        ? error.message : 'Traveller Command Failed';
     }
     console.error('Command failed:', error);
   }
@@ -415,12 +429,18 @@ function sendCommand(cmd) {
 }
 
 function sendSpeedValue(speedValue) {
+  if (!motorEnabled) {
+    pendingSpeedValue = null;
+    updateMotorSpeedDisplay(0);
+    messageElement.textContent = 'Enable Traveller First';
+    return;
+  }
   pendingSpeedValue = speedValue;
   if (speedSendTimer) return;
 
   speedSendTimer = setTimeout(() => {
     speedSendTimer = null;
-    if (pendingSpeedValue === null) return;
+    if (pendingSpeedValue === null || !motorEnabled) return;
     const valueToSend = pendingSpeedValue;
     pendingSpeedValue = null;
     sendCommand({ cmd: 'speed', value: valueToSend });
@@ -428,12 +448,14 @@ function sendSpeedValue(speedValue) {
 }
 
 function sendOnCommand() {
-  messageElement.textContent = 'Enabling motor...';
+  messageElement.textContent = 'Started Traveller';
   sendCommand({ cmd: 'on' });
 }
 
 function sendOffCommand() {
-  messageElement.textContent = 'Stopping motor...';
+  pendingSpeedValue = null;
+  updateSystemToggleDisplay(false);
+  messageElement.textContent = 'Stopped Traveller';
   updateMotorSpeedDisplay(0);
   sendCommand({ cmd: 'off' });
 }
@@ -452,24 +474,24 @@ function selectDistanceDirection(direction) {
 function startDistanceMove() {
   const distanceCm = Number.parseFloat(distanceInput.value);
   if (!Number.isFinite(distanceCm) || distanceCm <= 0) {
-    distanceMessage.textContent = 'Enter a distance greater than 0 cm';
+    distanceMessage.textContent = 'Enter A Distance Greater Than 0 cm';
     return;
   }
   if (!selectedDistanceDirection) {
-    distanceMessage.textContent = 'Select CW or CCW';
+    distanceMessage.textContent = 'Select RB Or LB';
     return;
   }
-  distanceMessage.textContent = 'Starting move...';
+  distanceMessage.textContent = 'Started Move';
   sendCommand({ cmd: 'distance_start', distanceCm, direction: selectedDistanceDirection });
 }
 
 function stopDistanceMove() {
-  distanceMessage.textContent = 'Stopping...';
+  distanceMessage.textContent = 'Stopped Move';
   sendCommand({ cmd: 'distance_stop' });
 }
 
 function zeroDistancePosition() {
-  distanceMessage.textContent = 'Setting zero...';
+  distanceMessage.textContent = 'Setting Zero';
   sendCommand({ cmd: 'distance_zero' });
 }
 
@@ -478,7 +500,7 @@ function updateArcFromPointerEvent(event) {
   const speed = pointToSpeed(x, y);
 
   updateMotorSpeedDisplay(speed);
-  messageElement.textContent = 'Adjusting motor speed...';
+  messageElement.textContent = 'Adjusting Traveller Speed';
   sendSpeedValue(speed);
 }
 
@@ -547,7 +569,7 @@ function handleArcKeydown(event) {
   event.preventDefault();
   nextSpeed = clamp(nextSpeed, -255, 255);
   updateMotorSpeedDisplay(nextSpeed);
-  messageElement.textContent = 'Adjusting motor speed...';
+  messageElement.textContent = 'Adjusting Traveller Speed';
   sendSpeedValue(nextSpeed);
 }
 

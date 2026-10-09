@@ -49,6 +49,11 @@ void WifiHotspot::cancelDistanceForManualControl() {
 }
 
 void WifiHotspot::applyManualSpeed(int speed) {
+  if (!motorController_.isEnabled()) {
+    manualReversalPending_ = false;
+    pendingManualSpeed_ = 0;
+    return;
+  }
   cancelDistanceForManualControl();
   speed = constrain(speed, -255, 255);
 
@@ -246,6 +251,11 @@ void WifiHotspot::handleMotorStatus(AsyncWebServerRequest* request) {
 }
 
 void WifiHotspot::handleMotorSpeed(AsyncWebServerRequest* request) {
+  if (!motorController_.isEnabled()) {
+    request->send(409, "application/json",
+                  "{\"error\":\"Enable Traveller First\"}");
+    return;
+  }
   if (!request->hasParam("value")) {
     request->send(400, "application/json",
                   "{\"error\":\"Missing value parameter\"}");
@@ -335,6 +345,13 @@ void WifiHotspot::handleWebSocketEvent(AsyncWebSocketClient* client,
 
       const char* cmd = doc["cmd"];
       if (!cmd) {
+        return;
+      }
+
+      if (!motorController_.isEnabled() &&
+          strcmp(cmd, "speed") == 0) {
+        client->text("{\"error\":\"Enable Traveller First\"}");
+        client->text(makeStateJson());
         return;
       }
 

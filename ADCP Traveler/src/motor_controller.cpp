@@ -126,9 +126,9 @@ void MotorController::applySpeed() {
 void MotorController::logState(const char* source) const {
   const char* direction = "STOP";
   if (currentSpeed_ > 0) {
-    direction = "CW";
+    direction = "RB";
   } else if (currentSpeed_ < 0) {
-    direction = "CCW";
+    direction = "LB";
   }
 
   const int speedPercent = (abs(currentSpeed_) * 100 + 127) / 255;

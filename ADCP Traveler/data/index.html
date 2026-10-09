@@ -4,13 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
     <meta name="theme-color" content="#071a35" />
     <meta http-equiv="Cache-Control" content="no-store" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <title>Gauge Glide</title>
-    <link rel="stylesheet" href="/style.css?v=ui-refresh-9" />
+    <link rel="stylesheet" href="/style.css?v=ui-refresh-15" />
   </head>
   <body>
     <main class="app-shell">
@@ -18,25 +18,28 @@
         <header class="app-header">
           <div class="brand-block">
             <img class="brand-logo" src="/uoa-logo-white.png" alt="Waipapa Taumata Rau University of Auckland" />
-            <div class="brand-divider" aria-hidden="true"></div>
-            <div class="product-copy">
-              <p class="product-title">GAUGE GLIDE</p>
-              <p class="product-subtitle">ADCP TRAVELLER</p>
-            </div>
+          </div>
+          <div class="product-copy">
+            <p class="product-title">GAUGE GLIDE</p>
+            <p class="product-subtitle">ADCP TRAVELLER</p>
           </div>
 
           <div class="header-status">
-            <div class="header-wifi-icon" aria-hidden="true">
+            <div class="header-wifi-icon" data-connected="false" data-quality="0" role="img" aria-label="Disconnected">
               <svg viewBox="0 0 24 24" role="presentation">
                 <path class="wifi-dot" d="M12 18.2a1.7 1.7 0 1 0 0 3.4 1.7 1.7 0 0 0 0-3.4Z" />
                 <path class="wifi-bar wifi-bar-1" d="M7.6 14.7a6.2 6.2 0 0 1 8.8 0" />
                 <path class="wifi-bar wifi-bar-2" d="M4.6 11.4a10.6 10.6 0 0 1 14.8 0" />
                 <path class="wifi-bar wifi-bar-3" d="M1.8 8.2a14.6 14.6 0 0 1 20.4 0" />
+                <path class="wifi-disconnected-cross" d="M6 5 18 17 M18 5 6 17" />
               </svg>
             </div>
-            <div class="connection-indicator connected" id="connection-pill">
-              <span class="indicator-dot" id="connection-dot" aria-hidden="true"></span>
-              <span id="connection-status-label">CONNECTED</span>
+            <div class="header-battery" role="img" aria-label="Battery Full (Fixed Display)">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <rect class="battery-terminal" x="9" y="1" width="6" height="2" rx="1" />
+                <rect class="battery-outline" x="5" y="4" width="14" height="19" rx="3" />
+                <rect class="battery-fill" x="7" y="6" width="10" height="15" rx="1" />
+              </svg>
             </div>
           </div>
         </header>
@@ -48,7 +51,7 @@
                 <div class="hero-row">
                   <div>
                     <h1 id="speed-page-title">Speed Control</h1>
-                    <p class="page-subtitle">Control the motor speed manually.</p>
+                    <p class="page-subtitle">Control the traveller speed manually.</p>
                   </div>
                   <button class="system-toggle is-off" type="button" data-action="system-toggle">
                     <span class="system-icon" aria-hidden="true">
@@ -63,18 +66,18 @@
 
                 <section class="status-card" aria-label="System status">
                   <div class="status-item">
-                    <div class="status-icon status-icon-motor" aria-hidden="true">M</div>
+                    <div class="status-icon status-icon-motor" aria-hidden="true">T</div>
                     <div>
-                      <p class="status-label">Motor State</p>
-                      <p id="motor-state" class="status-value motor-state-value status-off">OFF</p>
+                      <p class="status-label">Traveller State</p>
+                      <p id="motor-state" class="status-value motor-state-value status-off">STOPPED</p>
                     </div>
                   </div>
                 </section>
 
                 <section class="control-section" aria-labelledby="motor-speed-heading">
                   <div class="section-header">
-                    <h2 id="motor-speed-heading">Motor Speed</h2>
-                    <span id="motor-speed-value" class="section-emphasis">STOP</span>
+                    <h2 id="motor-speed-heading">Traveller Speed</h2>
+                    <span id="motor-speed-value" class="section-emphasis">Stopped</span>
                   </div>
 
                   <div class="arc-widget motor-control" id="motor-arc-control" data-direction="stop">
@@ -103,14 +106,14 @@
                       <div class="arc-caption">Speed</div>
                     </div>
 
-                    <div class="arc-axis-label arc-axis-left">CCW</div>
-                    <div class="arc-axis-label arc-axis-right">CW</div>
+                    <div class="arc-axis-label arc-axis-left">LB</div>
+                    <div class="arc-axis-label arc-axis-right">RB</div>
 
                     <div
                       class="arc-hit-area"
                       id="motor-arc-hit-area"
                       role="slider"
-                      aria-label="Motor speed and direction"
+                      aria-label="Traveller Speed And Direction"
                       aria-valuemin="-255"
                       aria-valuemax="255"
                       aria-valuenow="0"
@@ -172,7 +175,7 @@
                     </div>
                     <div>
                       <p class="status-label">Current State</p>
-                      <p class="status-value motor-state-value status-off">OFF</p>
+                      <p class="status-value motor-state-value status-off">STOPPED</p>
                     </div>
                   </div>
 
@@ -197,7 +200,7 @@
 
                     <div class="travelled-block">
                       <p class="distance-field-label">Travelled</p>
-                      <p id="distance-position" class="travelled-value">0.0 cm</p>
+                      <p id="distance-position" class="travelled-value">0 cm</p>
                     </div>
                   </div>
                 </section>
@@ -210,10 +213,10 @@
                         <path d="M6 11h6.8a5.2 5.2 0 0 1 5.2 5.2" />
                       </svg>
                     </span>
-                    <span>CCW</span>
+                    <span>LB</span>
                   </button>
                   <button id="distance-cw" class="action-button direction-button" type="button">
-                    <span>CW</span>
+                    <span>RB</span>
                     <span class="button-icon" aria-hidden="true">
                       <svg viewBox="0 0 24 24" role="presentation">
                         <path d="m13 6 5 5-5 5" />
@@ -284,6 +287,6 @@
       </div>
     </main>
 
-    <script src="/script.js?v=ui-refresh-9"></script>
+    <script src="/script.js?v=ui-refresh-15"></script>
   </body>
 </html>
