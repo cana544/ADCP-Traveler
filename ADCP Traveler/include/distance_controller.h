@@ -11,6 +11,7 @@ class DistanceController {
  public:
   enum class State {
     IDLE,
+    STARTING,
     MOVING,
     SETTLING,
     COMPLETE,
@@ -45,7 +46,11 @@ class DistanceController {
   int phaseDirection_;
   float integralErrorM_;
   float previousVoltage_;
+  float profilePositionOffsetCm_;
+  float profileTimeOffsetS_;
 
+  void runStartupPhase();
+  void beginSettling(uint32_t now);
   void runControlPhase();
   void stopAndDisable();
 };

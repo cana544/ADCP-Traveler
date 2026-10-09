@@ -63,6 +63,9 @@ void Encoder::setDistanceMode(bool enabled) {
   noInterrupts();
   distanceMode_ = enabled;
   latestPeriodUs_ = 0;
+  // A new distance move starts only after the wheel has stopped. Its first
+  // velocity interval must not include idle time since the previous move.
+  if (enabled) lastPulseUs_ = 0;
   lastProcessedPulses_ = signedPulses_;
   interrupts();
   filteredVelocityCmS_ = 0.0f;

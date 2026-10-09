@@ -56,10 +56,12 @@ int main() {
       }
       if ((t - 1000) % 50000 == 0) {
         e.update(); ve.update(); vc.heartbeat(); c.update(); vc.update();
-        matches &= m.currentSpeed() == vm.currentSpeed();
+        matches &= direction * m.currentSpeed() >= 0 && abs(m.currentSpeed()) <= 255 &&
+                   fabsf(e.velocityCmS() - ve.velocityCmS()) < .001f &&
+                   fabsf(e.positionCm() - ve.positionCm()) < .001f;
       }
     }
-    check(matches, "app PWM trace must match validated controller in both directions");
+    check(matches, "startup-aware app must preserve encoder estimates and bounded directional output");
     check(c.state() == DistanceController::State::COMPLETE && m.currentSpeed() == 0,
           "successful move must complete without a second move");
     c.cancel(); m.setSpeed(direction * 200);
@@ -70,13 +72,15 @@ int main() {
   fakeUs = 1000;
   Encoder e; MotorController m; DistanceController c(e, m);
   c.beginMove(10, 1);
+  fakeUs += 200000; e.onPulse(); e.update(); c.update();
+  fakeUs += 200000; e.onPulse(); e.update(); c.update();
   fakeUs += 2100000; e.update(); c.update();
   check(m.currentSpeed() == 0, "profile end must stop PWM even when endpoint is missed");
   fakeUs += 1000000; c.update();
   check(!c.isActive() && std::string(c.statusText()) == "ERROR",
         "missed endpoint must terminate as an app error");
   c.beginMove(10, -1);
-  fakeUs += 7100000; c.update();
+  fakeUs += 10100000; c.update();
   check(!c.isActive() && m.currentSpeed() == 0,
         "delayed update must enforce bounded trial deadline");
   c.cancel();

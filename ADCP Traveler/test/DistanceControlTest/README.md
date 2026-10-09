@@ -69,8 +69,24 @@ python -m unittest discover -s test/DistanceControlTest/scripts -p test_tuning.p
 node test/ui_layout_check.js
 g++ -std=c++17 -Wall -Wextra -I test/DistanceControlTest/host -I include test/DistanceControlTest/host/app_regression.cpp -o test/DistanceControlTest/host/app_regression.exe
 & test/DistanceControlTest/host/app_regression.exe
+g++ -std=c++17 -Wall -Wextra -I test/DistanceControlTest/host -I include test/DistanceControlTest/host/startup_regression.cpp -o test/DistanceControlTest/host/startup_regression.exe
+& test/DistanceControlTest/host/startup_regression.exe
 ```
 
 C++ tests compile the real sketch with simulated Arduino I/O. They check
 profile area/bounds, idle boot, sparse encoder pulses, command rejection,
 timeouts, cancellation and recovery. Hardware trials measure motor response.
+
+The app controller now starts each distance move with an effort ramp (1 V/s,
+8 V maximum, 10 s timeout), configured in `include/config.h`. Two encoder
+pulses confirm movement. Startup travel counts toward the original target;
+the remaining-distance profile begins at the measured velocity. PWM changes
+at handoff retain the existing slew limit. If the estimated stopping distance
+already consumes the remaining travel, output stops and the endpoint check
+determines success or error. A blocked startup disables the motor and reports
+an error. The frozen standalone tuning sketch keeps its original startup.
+
+These are initial settings for loaded trials, not a guarantee of accuracy when
+towing. The encoder measures wheel travel, not rope or boat displacement, and
+its resolution is approximately 0.63 cm per pulse. Test both directions under
+the actual load before adjusting the ramp or effort cap.

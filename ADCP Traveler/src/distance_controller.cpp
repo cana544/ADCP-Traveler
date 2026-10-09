@@ -7,7 +7,8 @@ DistanceController::DistanceController(Encoder& encoder, MotorController& motor)
     : encoder_(encoder), motor_(motor), state_(State::IDLE), phaseStartUs_(0),
       lastUpdateUs_(0), settleStartUs_(0), requestedDistanceCm_(0),
       moveStartPositionCm_(0), targetPositionCm_(0), phaseDirection_(1),
-      integralErrorM_(0), previousVoltage_(0) {}
+      integralErrorM_(0), previousVoltage_(0), profilePositionOffsetCm_(0),
+      profileTimeOffsetS_(0) {}
 
 void DistanceController::beginMove(float distanceCm, int direction) {
   if (isActive() || !std::isfinite(distanceCm) || distanceCm <= 0 ||
@@ -21,21 +22,85 @@ void DistanceController::beginMove(float distanceCm, int direction) {
   phaseStartUs_ = lastUpdateUs_ = micros();
   settleStartUs_ = 0;
   integralErrorM_ = previousVoltage_ = 0;
+  profilePositionOffsetCm_ = profileTimeOffsetS_ = 0;
   encoder_.setDistanceMode(true);
   encoder_.setDirection(direction);
   profile_.start(distanceCm, direction);
+  motor_.stop();
   motor_.setEnabled(true);
-  state_ = State::MOVING;
+  state_ = State::STARTING;
 }
 
 void DistanceController::update() {
-  if (isActive()) runControlPhase();
+  if (state_ == State::STARTING) runStartupPhase();
+  else if (isActive()) runControlPhase();
+}
+
+void DistanceController::beginSettling(uint32_t now) {
+  motor_.stop();
+  previousVoltage_ = 0;
+  state_ = State::SETTLING;
+  settleStartUs_ = now;
+}
+
+void DistanceController::runStartupPhase() {
+  const uint32_t now = micros();
+  if (now - phaseStartUs_ >= Config::Control::STARTUP_TIMEOUT_US) {
+    stopAndDisable();
+    previousVoltage_ = integralErrorM_ = 0;
+    state_ = State::FAILED;
+    encoder_.setDistanceMode(false);
+    return;
+  }
+  const float travelled = phaseDirection_ * (encoder_.positionCm() - moveStartPositionCm_);
+  const float remaining = requestedDistanceCm_ - travelled;
+  if (remaining <= 0) {
+    beginSettling(now);
+    return;
+  }
+  const float confirmationDistance = Config::Control::STARTUP_CONFIRM_PULSES *
+      Config::Encoder::DISTANCE_PER_PULSE_CM;
+  if (travelled >= confirmationDistance - 0.0001f && !encoder_.isStopped()) {
+    const float measuredSpeed = max(0.0f, phaseDirection_ * encoder_.velocityCmS());
+    const float brakingDistance = measuredSpeed * measuredSpeed /
+        (2.0f * Config::Motion::A_MAX_CM_S2);
+    if (remaining <= brakingDistance) {
+      beginSettling(now);
+      return;
+    }
+    // Enter the remaining-distance profile at the measured speed, rather than
+    // restarting from rest or adding the startup travel to the endpoint.
+    const float initialSpeed = min(measuredSpeed, Config::Motion::V_MAX_CM_S);
+    const float initialDistance = initialSpeed * initialSpeed /
+        (2.0f * Config::Motion::A_MAX_CM_S2);
+    profile_.start(remaining + initialDistance, phaseDirection_);
+    profileTimeOffsetS_ = initialSpeed / Config::Motion::A_MAX_CM_S2;
+    profilePositionOffsetCm_ = encoder_.positionCm() - moveStartPositionCm_ -
+        phaseDirection_ * initialDistance;
+    phaseStartUs_ = lastUpdateUs_ = now;
+    integralErrorM_ = 0;
+    state_ = State::MOVING;
+    return;
+  }
+  const float dt = max(0.0f, min(0.2f, (now - lastUpdateUs_) * 1.0e-6f));
+  lastUpdateUs_ = now;
+  const float maximum = min(Config::Control::STARTUP_MAX_VOLTAGE,
+                            Config::Control::SUPPLY_VOLTAGE);
+  previousVoltage_ = phaseDirection_ * min(maximum,
+      fabsf(previousVoltage_) + Config::Control::STARTUP_RAMP_V_S * dt);
+  motor_.setVoltage(previousVoltage_);
 }
 
 void DistanceController::runControlPhase() {
   const uint32_t now = micros();
   const float elapsed = (now - phaseStartUs_) * 1.0e-6f;
-  if (elapsed > profile_.durationSeconds() + Config::Control::MOVE_TIMEOUT_MARGIN_S) {
+  const bool motionTimedOut = state_ == State::MOVING &&
+      elapsed > profile_.durationSeconds() - profileTimeOffsetS_ +
+                    Config::Control::MOVE_TIMEOUT_MARGIN_S;
+  const bool settlingTimedOut = state_ == State::SETTLING &&
+      now - settleStartUs_ > Config::Control::SETTLING_TIME_US +
+          static_cast<uint32_t>(Config::Control::MOVE_TIMEOUT_MARGIN_S * 1000000.0f);
+  if (motionTimedOut || settlingTimedOut) {
     motor_.stop(); previousVoltage_ = 0;
     state_ = State::FAILED;
     encoder_.setDistanceMode(false);
@@ -43,10 +108,16 @@ void DistanceController::runControlPhase() {
   }
   const float dt = max(0.001f, min(0.2f, (now - lastUpdateUs_) * 1.0e-6f));
   lastUpdateUs_ = now;
-  const MotionReference reference = profile_.sample(elapsed);
+  MotionReference reference = profile_.sample(elapsed + profileTimeOffsetS_);
+  reference.positionCm += profilePositionOffsetCm_;
   const float position = encoder_.positionCm() - moveStartPositionCm_;
   const float velocity = encoder_.velocityCmS();
   const float positionError = reference.positionCm - position;
+
+  if (state_ == State::MOVING &&
+      phaseDirection_ * (targetPositionCm_ - encoder_.positionCm()) <= 0) {
+    beginSettling(now);
+  }
 
   if (state_ == State::MOVING && !reference.finished) {
     float command = reference.velocityCmS + Config::Control::POSITION_KP * positionError;
@@ -71,8 +142,7 @@ void DistanceController::runControlPhase() {
     motor_.setVoltage(voltage);
   } else {
     if (state_ == State::MOVING) {
-      state_ = State::SETTLING;
-      settleStartUs_ = now;
+      beginSettling(now);
     }
     motor_.stop(); previousVoltage_ = 0;
     // One continuous move: a missed endpoint is an error, never a restart.
@@ -98,7 +168,7 @@ void DistanceController::stopAndDisable() {
 }
 
 bool DistanceController::isActive() const {
-  return state_ == State::MOVING || state_ == State::SETTLING;
+  return state_ == State::STARTING || state_ == State::MOVING || state_ == State::SETTLING;
 }
 
 DistanceController::State DistanceController::state() const { return state_; }
@@ -106,6 +176,7 @@ DistanceController::State DistanceController::state() const { return state_; }
 const char* DistanceController::statusText() const {
   switch (state_) {
     case State::IDLE: return "IDLE";
+    case State::STARTING:
     case State::MOVING:
     case State::SETTLING: return "MOVING";
     case State::COMPLETE: return "COMPLETE";
