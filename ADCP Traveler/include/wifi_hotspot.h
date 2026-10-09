@@ -27,6 +27,8 @@ class WifiHotspot {
   DistanceController distanceController_;
   SectionController sectionController_;
   SemaphoreHandle_t controlMutex_;
+  uint32_t bootId_;
+  mutable uint32_t stateSequence_;
   AsyncWebServer server_;
   AsyncWebSocket ws_;
 

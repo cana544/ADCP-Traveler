@@ -4,6 +4,7 @@
 #include <SPIFFS.h>
 #include <WiFi.h>
 #include <esp_wifi.h>
+#include <esp_system.h>
 #include <cstdlib>
 
 #include "config.h"
@@ -26,6 +27,8 @@ WifiHotspot::WifiHotspot()
       distanceController_(encoder_, motorController_),
       sectionController_(encoder_, motorController_, distanceController_),
       controlMutex_(xSemaphoreCreateRecursiveMutex()),
+      bootId_(esp_random()),
+      stateSequence_(0),
       server_(80),
       ws_("/ws"),
       pendingManualSpeed_(0),
@@ -152,6 +155,8 @@ bool WifiHotspot::zeroPosition() {
 String WifiHotspot::makeStateJson() const {
   ControlLock lock(controlMutex_);
   DynamicJsonDocument response(4096);
+  response["bootId"] = bootId_;
+  response["stateSequence"] = ++stateSequence_;
   response["state"] = motorController_.isEnabled() ? "on" : "off";
   response["speed"] = motorController_.currentSpeed();
   response["positionCm"] = encoder_.positionCm();

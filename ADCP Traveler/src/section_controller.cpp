@@ -21,6 +21,7 @@ bool SectionController::startScan(int direction) {
   scanStartCm_ = scanEndCm_ = encoder_.positionCm();
   scanStartUs_ = micros();
   scanSettling_ = executionStarted_ = false;
+  scanAtFullSpeed_ = false;
   completed_ = plan_.count = 0;
   error_ = "";
   encoder_.setDistanceMode(false);
@@ -140,8 +141,10 @@ void SectionController::invalidate() {
 void SectionController::update() {
   if (stage_ == Stage::SCANNING) {
     if (!motor_.isEnabled()) { stop(); return; }
-    const float fraction = std::fmin(1.0f, static_cast<float>(micros() - scanStartUs_) /
-        Config::Section::SCAN_RAMP_DURATION_US);
+    const uint32_t elapsed = micros() - scanStartUs_;
+    if (elapsed >= Config::Section::SCAN_RAMP_DURATION_US) scanAtFullSpeed_ = true;
+    const float fraction = scanAtFullSpeed_ ? 1.0f : static_cast<float>(elapsed) /
+        Config::Section::SCAN_RAMP_DURATION_US;
     const float smooth = fraction * fraction * (3 - 2 * fraction);
     const int speed = scanDirection_ * static_cast<int>(std::round(255 * smooth));
     if (motor_.currentSpeed() != speed) motor_.setSpeed(speed);

@@ -158,4 +158,26 @@ void failureAndInvalidation() {
   std::puts("PASS: invalid count revokes plan, startup failure preserves section, invalidation stops");
 }
 
-int main() { planner(); scanAndRamp(); returnAndResume(); failureAndInvalidation(); }
+void powerOffAndLongScan() {
+  Rig rig;
+  assert(rig.sections.startScan(1)); rig.tick(4000000);
+  assert(rig.motor.currentSpeed() == 255);
+  // More than one micros() wrap must never restart a completed scan ramp.
+  rig.tick(0xFFFFFFFFUL - 4000000UL + 1001UL);
+  assert(rig.motor.currentSpeed() == 255);
+  rig.pulses(1000);
+  rig.motor.setEnabled(false); rig.sections.update();
+  assert(rig.motor.currentSpeed() == 0);
+  rig.tick(600000);
+  assert(rig.sections.stage() == SectionController::Stage::CONFIGURE);
+  assert(rig.sections.configure(6)); assert(rig.sections.go());
+  rig.pulses(10);
+  rig.sections.stop(); rig.motor.setEnabled(false);
+  rig.tick(600000);
+  assert(rig.sections.completedCount() == 0);
+  assert(rig.sections.go());
+  assert(rig.motor.isEnabled());
+  std::puts("PASS: full-speed scan survives timer wrap; power-off pauses and GO resumes");
+}
+
+int main() { planner(); scanAndRamp(); returnAndResume(); failureAndInvalidation(); powerOffAndLongScan(); }

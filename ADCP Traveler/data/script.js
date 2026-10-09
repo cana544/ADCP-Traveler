@@ -39,6 +39,9 @@ let swipeStartY = 0;
 let isSwiping = false;
 let selectedDistanceDirection = null;
 let motorEnabled = false;
+let stateBootId = null;
+let stateSequence = null;
+const sectionUI = new SectionControlUI(document, sendSectionCommand);
 
 const arcConfig = {
   cx: 200,
@@ -250,6 +253,13 @@ function updateDistanceState(data) {
 }
 
 function applyStateMessage(data) {
+  if (Number.isFinite(data.stateSequence)) {
+    if (data.bootId === stateBootId && stateSequence !== null &&
+        ((data.stateSequence - stateSequence) | 0) <= 0) return;
+    stateBootId = data.bootId;
+    stateSequence = data.stateSequence;
+  }
+  sectionUI.update(data);
   if (typeof data.error === 'string') {
     messageElement.textContent = data.error;
     distanceMessage.textContent = data.error;
@@ -315,7 +325,11 @@ function setConnectionMessage(text) {
 
 function showPage(pageIndex) {
   currentPage = clamp(pageIndex, 0, pageButtons.length - 1);
-  pageTrack.style.transform = `translateX(-${currentPage * 50}%)`;
+  pageTrack.style.transform = `translateX(-${currentPage * (100 / pageButtons.length)}%)`;
+  Array.from(pageTrack.querySelectorAll('.app-page')).forEach((page, index) => {
+    page.setAttribute('aria-hidden', String(index !== currentPage));
+    page.inert = index !== currentPage;
+  });
 
   pageButtons.forEach((button, index) => {
     const active = index === currentPage;
@@ -325,7 +339,7 @@ function showPage(pageIndex) {
 }
 
 function handleSwipeStart(event) {
-  if (event.target.closest('button, input, .arc-hit-area')) {
+  if (event.target.closest('button, input, .arc-hit-area, .section-details, .section-overview')) {
     isSwiping = false;
     return;
   }
@@ -374,11 +388,13 @@ function connectWebSocket() {
   };
 
   ws.onerror = () => {
+    sectionUI.setOnline(false);
     setConnectionState(false, 'CONNECTION ERROR');
     setConnectionMessage('WebSocket Connection Error');
   };
 
   ws.onclose = () => {
+    sectionUI.setOnline(false);
     setConnectionState(false, 'DISCONNECTED');
     setConnectionMessage('Disconnected From ESP32. Reconnecting');
     setButtonsDisabled(true);
@@ -426,6 +442,41 @@ async function sendHttpCommand(cmd) {
 
 function sendCommand(cmd) {
   if (!sendWebSocketCommand(cmd)) sendHttpCommand(cmd);
+}
+
+async function sendSectionCommand(cmd) {
+  const action = cmd.cmd.slice('section_'.length);
+  const params = new URLSearchParams();
+  if (cmd.direction !== undefined) params.set('direction', cmd.direction);
+  if (cmd.count !== undefined) params.set('count', String(cmd.count));
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  try {
+    // Send STOP through the live socket immediately as well as the HTTP path.
+    if (action === 'stop') sendWebSocketCommand(cmd);
+    const response = await fetch(`/section/${action}?${params}`, {
+      cache: 'no-store', signal: controller.signal,
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      await refreshSectionStatus();
+      throw new Error(data.sectionError || `HTTP ${response.status}`);
+    }
+    applyStateMessage(data);
+    return null; // State ordering is handled centrally, including delayed responses.
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function refreshSectionStatus() {
+  try {
+    const response = await fetch('/section/status', { cache: 'no-store' });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    applyStateMessage(await response.json());
+  } catch (error) {
+    sectionUI.setOnline(false);
+  }
 }
 
 function sendSpeedValue(speedValue) {
@@ -617,3 +668,7 @@ setConnectionState(false, 'CONNECTING');
 connectWebSocket();
 refreshWifiSignal();
 setInterval(refreshWifiSignal, 5000);
+refreshSectionStatus();
+setInterval(() => {
+  if (!ws || ws.readyState !== WebSocket.OPEN) refreshSectionStatus();
+}, 1000);

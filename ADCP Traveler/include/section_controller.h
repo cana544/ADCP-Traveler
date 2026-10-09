@@ -43,6 +43,7 @@ class SectionController {
   float scanEndCm_ = 0;
   uint32_t scanStartUs_ = 0;
   bool scanSettling_ = false;
+  bool scanAtFullSpeed_ = false;
   bool executionStarted_ = false;
   const char* error_ = "";
 
