@@ -110,3 +110,18 @@ test('STOP remains available if an earlier GO response is delayed', async () => 
   assert.equal(sent[1].cmd, 'section_stop');
   release({}); await go;
 });
+
+test('count edit made while offline is submitted after reconnect', async () => {
+  const sent = [];
+  const { ui, nodes } = uiRig(async command => { sent.push(command); return {}; });
+  ui.update({ state: 'on', section: ready });
+  ui.setOnline(false);
+  nodes.get('section-count').value = '12';
+  nodes.get('section-count').handlers.input();
+  await new Promise(resolve => setTimeout(resolve, 350));
+  assert.equal(sent.length, 0);
+  ui.update({ state: 'on', section: ready });
+  await new Promise(resolve => setTimeout(resolve, 350));
+  assert.deepEqual(sent, [{ cmd: 'section_configure', count: 12 }]);
+  assert.equal(nodes.get('section-action').disabled, false);
+});

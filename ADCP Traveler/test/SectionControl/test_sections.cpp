@@ -180,4 +180,17 @@ void powerOffAndLongScan() {
   std::puts("PASS: full-speed scan survives timer wrap; power-off pauses and GO resumes");
 }
 
-int main() { planner(); scanAndRamp(); returnAndResume(); failureAndInvalidation(); powerOffAndLongScan(); }
+void sixtySections() {
+  Rig rig;
+  rig.scan(1, 4000);
+  assert(rig.sections.configure(60));
+  for (int i = 0; i < 60; ++i) {
+    assert(rig.sections.go()); rig.finishMove();
+    assert(rig.sections.completedCount() == i + 1);
+  }
+  assert(rig.sections.stage() == SectionController::Stage::FINISHED);
+  assert(std::fabs(rig.encoder.positionCm()) <= Config::Control::POSITION_TOLERANCE_CM);
+  std::puts("PASS: 60 individually stopped sections return to origin without cumulative drift");
+}
+
+int main() { planner(); scanAndRamp(); returnAndResume(); failureAndInvalidation(); powerOffAndLongScan(); sixtySections(); }

@@ -33,6 +33,7 @@
       this.pending = false;
       this.requestId = 0;
       this.countDirty = false;
+      this.configurationQueued = false;
       this.direction = 'cw';
       this.stripKey = '';
       this.error = '';
@@ -49,10 +50,11 @@
       this.el['new-scan'].addEventListener('click', () => this.command({ cmd: 'section_new_scan' }));
       this.el.count.addEventListener('input', () => {
         this.countDirty = true;
+        this.configurationQueued = true;
         this.error = '';
         this.render();
         clearTimeout(this.timer);
-        this.timer = setTimeout(() => this.configure(), 300);
+        this.timer = setTimeout(() => { this.timer = null; this.configure(); }, 300);
       });
       this.render();
     }
@@ -68,6 +70,9 @@
         this.online = true;
         if (previousStage !== this.state.stage && this.state.stage === 'PRE_SCAN') {
           this.countDirty = false;
+          this.configurationQueued = false;
+          clearTimeout(this.timer);
+          this.timer = null;
           this.el.count.value = '';
           this.error = '';
         }
@@ -85,7 +90,12 @@
     }
 
     async configure() {
-      if (!this.online || this.state.locked || this.pending) return;
+      if (this.state.locked || !['CONFIGURE', 'READY_FOR_SECTION'].includes(this.state.stage)) {
+        this.configurationQueued = false;
+        return;
+      }
+      if (!this.online || this.pending || !this.state.stationary) return;
+      this.configurationQueued = false;
       const value = this.el.count.value.trim();
       const count = value === '' ? NaN : Number(value);
       await this.command({ cmd: 'section_configure', count });
@@ -205,6 +215,10 @@
       });
       el.message.textContent = this.error || s.error || '';
       this.renderStrips();
+      if (this.configurationQueued && this.online && !this.pending && !s.locked &&
+          s.stationary && ['CONFIGURE', 'READY_FOR_SECTION'].includes(s.stage) && !this.timer) {
+        this.timer = setTimeout(() => { this.timer = null; this.configure(); }, 300);
+      }
     }
   }
 

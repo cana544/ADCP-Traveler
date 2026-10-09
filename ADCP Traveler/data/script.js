@@ -41,6 +41,8 @@ let selectedDistanceDirection = null;
 let motorEnabled = false;
 let stateBootId = null;
 let stateSequence = null;
+const retiredBootIds = new Set();
+let stateBootGeneration = 0;
 const sectionUI = new SectionControlUI(document, sendSectionCommand);
 
 const arcConfig = {
@@ -252,10 +254,17 @@ function updateDistanceState(data) {
   distanceStopButton.disabled = false;
 }
 
-function applyStateMessage(data) {
+function applyStateMessage(data, requestGeneration) {
   if (Number.isFinite(data.stateSequence)) {
+    if (requestGeneration !== undefined && requestGeneration !== stateBootGeneration &&
+        data.bootId !== stateBootId) return;
+    if (retiredBootIds.has(data.bootId)) return;
     if (data.bootId === stateBootId && stateSequence !== null &&
         ((data.stateSequence - stateSequence) | 0) <= 0) return;
+    if (data.bootId !== stateBootId) {
+      if (stateBootId !== null) retiredBootIds.add(stateBootId);
+      ++stateBootGeneration;
+    }
     stateBootId = data.bootId;
     stateSequence = data.stateSequence;
   }
@@ -411,6 +420,7 @@ function sendWebSocketCommand(cmd) {
 }
 
 async function sendHttpCommand(cmd) {
+  const requestGeneration = stateBootGeneration;
   let endpoint = null;
   if (cmd.cmd === 'speed') endpoint = `/motor/speed?value=${encodeURIComponent(cmd.value)}`;
   else if (cmd.cmd === 'on') endpoint = '/motor/on';
@@ -428,7 +438,7 @@ async function sendHttpCommand(cmd) {
     const response = await fetch(endpoint, { cache: 'no-store' });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
-    applyStateMessage(data);
+    applyStateMessage(data, requestGeneration);
   } catch (error) {
     if (cmd.cmd.startsWith('distance_')) {
       distanceMessage.textContent = error.message;
@@ -445,15 +455,20 @@ function sendCommand(cmd) {
 }
 
 async function sendSectionCommand(cmd) {
+  const requestGeneration = stateBootGeneration;
   const action = cmd.cmd.slice('section_'.length);
+  if (action === 'stop' && sendWebSocketCommand(cmd)) {
+    // Use one mutation transport. A delayed duplicate STOP must not cancel a
+    // subsequent GO after the traveller has already acknowledged the first STOP.
+    await refreshSectionStatus();
+    return null;
+  }
   const params = new URLSearchParams();
   if (cmd.direction !== undefined) params.set('direction', cmd.direction);
   if (cmd.count !== undefined) params.set('count', String(cmd.count));
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 5000);
   try {
-    // Send STOP through the live socket immediately as well as the HTTP path.
-    if (action === 'stop') sendWebSocketCommand(cmd);
     const response = await fetch(`/section/${action}?${params}`, {
       cache: 'no-store', signal: controller.signal,
     });
@@ -462,7 +477,7 @@ async function sendSectionCommand(cmd) {
       await refreshSectionStatus();
       throw new Error(data.sectionError || `HTTP ${response.status}`);
     }
-    applyStateMessage(data);
+    applyStateMessage(data, requestGeneration);
     return null; // State ordering is handled centrally, including delayed responses.
   } finally {
     clearTimeout(timeout);
@@ -470,12 +485,17 @@ async function sendSectionCommand(cmd) {
 }
 
 async function refreshSectionStatus() {
+  const requestGeneration = stateBootGeneration;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
   try {
-    const response = await fetch('/section/status', { cache: 'no-store' });
+    const response = await fetch('/section/status', { cache: 'no-store', signal: controller.signal });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    applyStateMessage(await response.json());
+    applyStateMessage(await response.json(), requestGeneration);
   } catch (error) {
     sectionUI.setOnline(false);
+  } finally {
+    clearTimeout(timeout);
   }
 }
 

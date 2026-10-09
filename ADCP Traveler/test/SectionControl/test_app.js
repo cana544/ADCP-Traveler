@@ -5,7 +5,7 @@ const vm = require('node:vm');
 const path = require('node:path');
 const { SectionControlUI } = require('../../data/section-control.js');
 
-function app() {
+function app(fetchOverride) {
   const nodes = new Map();
   function element() {
     const classes = new Set();
@@ -33,11 +33,11 @@ function app() {
   class Socket { static OPEN = 1; readyState = 0; send() {} }
   const context = vm.createContext({ document: doc, SectionControlUI,
     window: { location: { protocol: 'http:', host: 'test.local' } },
-    WebSocket: Socket, console, fetch: () => new Promise(() => {}),
+    WebSocket: Socket, console, fetch: fetchOverride || (() => new Promise(() => {})),
     setTimeout, clearTimeout, setInterval() {}, URLSearchParams, AbortController,
   });
   vm.runInContext(fs.readFileSync(path.join(__dirname, '../../data/script.js'), 'utf8') +
-    '\nglobalThis.api = { applyStateMessage, showPage, handleSwipeStart, handleSwipeEnd };', context);
+    '\nglobalThis.api = { applyStateMessage, showPage, handleSwipeStart, handleSwipeEnd, sendSectionCommand, openSocket() { ws.readyState = WebSocket.OPEN; } };', context);
   return { api: context.api, nodes, pages };
 }
 function state(sequence, stage = 'READY_FOR_SECTION', bootId = 10) {
@@ -51,6 +51,8 @@ test('older HTTP snapshot cannot undo newer STOP or completion state', () => {
   api.applyStateMessage(state(19, 'MOVING_SECTION'));
   assert.equal(nodes.get('section-action-label').textContent, 'COMPLETE');
   api.applyStateMessage(state(1, 'PRE_SCAN', 11)); // ESP reboot
+  assert.equal(nodes.get('section-action-label').textContent, 'RUN');
+  api.applyStateMessage(state(30, 'FINISHED', 10)); // delayed pre-reboot HTTP response
   assert.equal(nodes.get('section-action-label').textContent, 'RUN');
 });
 test('third tab uses full page width and makes other controls inert', () => {
@@ -66,4 +68,21 @@ test('swiping section details does not change tabs', () => {
   api.handleSwipeStart({ target: { closest() { return true; } }, clientX: 300, clientY: 100 });
   api.handleSwipeEnd({ clientX: 400, clientY: 100 });
   assert.equal(nodes.get('page-track').style.transform, 'translateX(-66.66666666666667%)');
+});
+test('live-socket STOP does not enqueue a second delayed HTTP STOP', async () => {
+  const urls = [];
+  const { api } = app(async url => {
+    urls.push(url); return { ok: true, json: async () => ({}) };
+  });
+  api.openSocket();
+  await api.sendSectionCommand({ cmd: 'section_stop' });
+  assert.equal(urls.filter(url => url.startsWith('/section/stop')).length, 0);
+  assert.ok(urls.includes('/section/status'));
+});
+test('HTTP snapshot started before a first-seen reboot cannot replace that reboot', () => {
+  const { api, nodes } = app();
+  api.applyStateMessage(state(1, 'PRE_SCAN', 11));
+  // Generation zero request started before any firmware state had arrived.
+  api.applyStateMessage(state(30, 'FINISHED', 10), 0);
+  assert.equal(nodes.get('section-action-label').textContent, 'RUN');
 });
