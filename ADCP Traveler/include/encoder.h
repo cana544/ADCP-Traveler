@@ -10,11 +10,12 @@ class Encoder {
   void begin(uint8_t pin);
   void update();
   void setDirection(int direction);
+  void setDistanceMode(bool enabled);
   void zero();
 
   float positionCm() const;
   float velocityCmS() const;
-  bool isStopped() const;
+  bool isStopped(uint32_t timeoutUs = 0) const;
   int32_t pulseCount() const;
 
  private:
@@ -27,6 +28,7 @@ class Encoder {
   volatile int8_t direction_;
   volatile uint32_t lastPulseUs_;
   volatile uint32_t latestPeriodUs_;
+  volatile bool distanceMode_;
 
   int32_t zeroOffsetPulses_;
   int32_t lastProcessedPulses_;
@@ -34,6 +36,8 @@ class Encoder {
   float velocitySamples_[4];
   uint8_t velocitySampleIndex_;
   uint8_t velocitySampleCount_;
+  void updateDistanceVelocity(int32_t pulses, uint32_t lastPulseUs,
+                              uint32_t periodUs, uint32_t nowUs);
 };
 
 #endif

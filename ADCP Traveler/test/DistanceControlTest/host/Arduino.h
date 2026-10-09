@@ -3,6 +3,7 @@
 #include <cmath>
 #include <cstdint>
 #include <sstream>
+#include <cstdio>
 using std::min;
 using std::max;
 constexpr float PI = 3.14159265358979323846f;
@@ -33,6 +34,11 @@ struct FakeSerial {
   int available() { return 0; }
   char read() { return 0; }
   void begin(int) {}
+  template <typename... Args> void printf(const char* format, Args... args) {
+    char buffer[512];
+    std::snprintf(buffer, sizeof(buffer), format, args...);
+    output += buffer;
+  }
   template <typename T> void print(T value, int = 0) {
     std::ostringstream stream; stream << value; output += stream.str();
   }

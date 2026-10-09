@@ -1,165 +1,95 @@
 #include "distance_controller.h"
 
-#include <Arduino.h>
-
+#include <cmath>
 #include "config.h"
 
 DistanceController::DistanceController(Encoder& encoder, MotorController& motor)
-    : encoder_(encoder),
-      motor_(motor),
-      state_(State::IDLE),
-      phaseStartUs_(0),
-      requestedDistanceCm_(0.0f),
-      moveStartPositionCm_(0.0f),
-      targetPositionCm_(0.0f),
-      phaseStartPositionCm_(0.0f),
-      phaseDirection_(1),
-      integralErrorM_(0.0f),
-      previousVelocityErrorM_S_(0.0f),
-      completeConfirmCount_(0) {}
+    : encoder_(encoder), motor_(motor), state_(State::IDLE), phaseStartUs_(0),
+      lastUpdateUs_(0), settleStartUs_(0), requestedDistanceCm_(0),
+      moveStartPositionCm_(0), targetPositionCm_(0), phaseDirection_(1),
+      integralErrorM_(0), previousVoltage_(0) {}
 
 void DistanceController::beginMove(float distanceCm, int direction) {
-  if (distanceCm <= 0.0f) {
-    return;
-  }
+  if (isActive() || !std::isfinite(distanceCm) || distanceCm <= 0 ||
+      (direction != 1 && direction != -1) ||
+      !encoder_.isStopped(Config::Encoder::DISTANCE_STOP_TIMEOUT_US)) return;
 
   requestedDistanceCm_ = distanceCm;
   moveStartPositionCm_ = encoder_.positionCm();
-  targetPositionCm_ =
-      moveStartPositionCm_ + (direction >= 0 ? distanceCm : -distanceCm);
-  completeConfirmCount_ = 0;
-  integralErrorM_ = 0.0f;
-  previousVelocityErrorM_S_ = 0.0f;
-
+  phaseDirection_ = direction;
+  targetPositionCm_ = moveStartPositionCm_ + direction * distanceCm;
+  phaseStartUs_ = lastUpdateUs_ = micros();
+  settleStartUs_ = 0;
+  integralErrorM_ = previousVoltage_ = 0;
+  encoder_.setDistanceMode(true);
+  encoder_.setDirection(direction);
+  profile_.start(distanceCm, direction);
   motor_.setEnabled(true);
-  startPhase(distanceCm, direction >= 0 ? 1 : -1);
-}
-
-void DistanceController::startPhase(float distanceCm, int direction) {
-  phaseDirection_ = direction >= 0 ? 1 : -1;
-  phaseStartPositionCm_ = encoder_.positionCm();
-  phaseStartUs_ = micros();
-  integralErrorM_ = 0.0f;
-  previousVelocityErrorM_S_ = 0.0f;
-  completeConfirmCount_ = 0;
-
-  encoder_.setDirection(phaseDirection_);
-  profile_.start(distanceCm, phaseDirection_);
   state_ = State::MOVING;
 }
 
 void DistanceController::update() {
-  if (state_ == State::MOVING || state_ == State::SETTLING) {
-    runControlPhase();
-    return;
-  }
-
-  if (state_ == State::REVERSAL_WAIT) {
-    motor_.stop();
-    if (encoder_.isStopped()) {
-      startCorrectionIfNeeded();
-    }
-  }
+  if (isActive()) runControlPhase();
 }
 
 void DistanceController::runControlPhase() {
-  const float elapsedSeconds =
-      static_cast<float>(micros() - phaseStartUs_) * 1.0e-6f;
-  const MotionReference reference = profile_.sample(elapsedSeconds);
+  const uint32_t now = micros();
+  const float elapsed = (now - phaseStartUs_) * 1.0e-6f;
+  if (elapsed > profile_.durationSeconds() + Config::Control::MOVE_TIMEOUT_MARGIN_S) {
+    motor_.stop(); previousVoltage_ = 0;
+    state_ = State::FAILED;
+    encoder_.setDistanceMode(false);
+    return;
+  }
+  const float dt = max(0.001f, min(0.2f, (now - lastUpdateUs_) * 1.0e-6f));
+  lastUpdateUs_ = now;
+  const MotionReference reference = profile_.sample(elapsed);
+  const float position = encoder_.positionCm() - moveStartPositionCm_;
+  const float velocity = encoder_.velocityCmS();
+  const float positionError = reference.positionCm - position;
 
-  const float measuredPositionCm = encoder_.positionCm();
-  const float measuredVelocityCmS = encoder_.velocityCmS();
-  const float desiredPositionCm = phaseStartPositionCm_ + reference.positionCm;
-  const float positionErrorCm = desiredPositionCm - measuredPositionCm;
-
-  const float velocityCorrectionCmS =
-      Config::Control::POSITION_KP * positionErrorCm;
-  float velocityCommandCmS = reference.velocityCmS + velocityCorrectionCmS;
-
-  if (phaseDirection_ > 0) {
-    velocityCommandCmS = constrain(velocityCommandCmS, 0.0f,
-                                   Config::Motion::V_MAX_CM_S);
+  if (state_ == State::MOVING && !reference.finished) {
+    float command = reference.velocityCmS + Config::Control::POSITION_KP * positionError;
+    command = phaseDirection_ * constrain(phaseDirection_ * command, 0.0f,
+                                          Config::Motion::V_MAX_CM_S);
+    const float error = (command - velocity) * 0.01f;
+    const float candidateIntegral = constrain(integralErrorM_ + error * dt, -1.0f, 1.0f);
+    const float friction = command == 0 ? 0 :
+        phaseDirection_ * Config::Control::FRICTION_COMPENSATION_V;
+    const float effort = Config::Control::FEEDFORWARD_GAIN_V_PER_M_S * command * 0.01f +
+        friction + Config::Control::VELOCITY_KP * error +
+        Config::Control::VELOCITY_KI * candidateIntegral;
+    float voltage = phaseDirection_ * constrain(phaseDirection_ * effort, 0.0f,
+                                                 Config::Control::SUPPLY_VOLTAGE);
+    if (phaseDirection_ * effort >= 0 &&
+        phaseDirection_ * effort <= Config::Control::SUPPLY_VOLTAGE)
+      integralErrorM_ = candidateIntegral;
+    voltage = constrain(voltage,
+        previousVoltage_ - Config::Control::VOLTAGE_SLEW_V_S * dt,
+        previousVoltage_ + Config::Control::VOLTAGE_SLEW_V_S * dt);
+    previousVoltage_ = voltage;
+    motor_.setVoltage(voltage);
   } else {
-    velocityCommandCmS = constrain(velocityCommandCmS,
-                                   -Config::Motion::V_MAX_CM_S, 0.0f);
-  }
-
-  const float velocityErrorM_S =
-      (velocityCommandCmS - measuredVelocityCmS) / 100.0f;
-  const float dt = static_cast<float>(Config::Control::CONTROL_PERIOD_US) * 1.0e-6f;
-
-  integralErrorM_ += velocityErrorM_S * dt;
-  const float derivativeErrorM_S2 =
-      (velocityErrorM_S - previousVelocityErrorM_S_) / dt;
-  previousVelocityErrorM_S_ = velocityErrorM_S;
-
-  const float feedbackVoltage =
-      Config::Control::VELOCITY_KP * velocityErrorM_S +
-      Config::Control::VELOCITY_KI * integralErrorM_ +
-      Config::Control::VELOCITY_KD * derivativeErrorM_S2;
-
-  const float feedforwardVoltage =
-      Config::Control::FEEDFORWARD_GAIN_V_PER_M_S *
-      (reference.velocityCmS / 100.0f);
-
-  float effortVoltage = constrain(
-      feedbackVoltage + feedforwardVoltage,
-      -Config::Control::SUPPLY_VOLTAGE,
-      Config::Control::SUPPLY_VOLTAGE);
-
-  if ((phaseDirection_ > 0 && effortVoltage < 0.0f) ||
-      (phaseDirection_ < 0 && effortVoltage > 0.0f)) {
-    effortVoltage = 0.0f;
-  }
-
-  motor_.setVoltage(effortVoltage);
-
-  if (!reference.finished) {
-    state_ = State::MOVING;
-    return;
-  }
-
-  state_ = State::SETTLING;
-  const float targetErrorCm = targetPositionCm_ - measuredPositionCm;
-
-  if (fabsf(targetErrorCm) <= Config::Control::POSITION_TOLERANCE_CM &&
-      fabsf(measuredVelocityCmS) <= Config::Control::VELOCITY_TOLERANCE_CM_S &&
-      encoder_.isStopped()) {
-    completeConfirmCount_++;
-    if (completeConfirmCount_ >= Config::Control::COMPLETE_CONFIRM_CYCLES) {
-      motor_.stop();
-      state_ = State::COMPLETE;
+    if (state_ == State::MOVING) {
+      state_ = State::SETTLING;
+      settleStartUs_ = now;
     }
-    return;
+    motor_.stop(); previousVoltage_ = 0;
+    // One continuous move: a missed endpoint is an error, never a restart.
+    if (now - settleStartUs_ >= Config::Control::SETTLING_TIME_US && encoder_.isStopped()) {
+      const float error = targetPositionCm_ - encoder_.positionCm();
+      state_ = fabsf(error) <= Config::Control::POSITION_TOLERANCE_CM
+                   ? State::COMPLETE : State::FAILED;
+      encoder_.setDistanceMode(false);
+    }
   }
-
-  completeConfirmCount_ = 0;
-
-  const bool correctionNeedsReverse =
-      (phaseDirection_ > 0 && targetErrorCm < -Config::Control::POSITION_TOLERANCE_CM) ||
-      (phaseDirection_ < 0 && targetErrorCm > Config::Control::POSITION_TOLERANCE_CM);
-
-  if (correctionNeedsReverse) {
-    motor_.stop();
-    state_ = State::REVERSAL_WAIT;
-  }
-}
-
-void DistanceController::startCorrectionIfNeeded() {
-  const float errorCm = targetPositionCm_ - encoder_.positionCm();
-
-  if (fabsf(errorCm) <= Config::Control::POSITION_TOLERANCE_CM) {
-    state_ = State::COMPLETE;
-    return;
-  }
-
-  startPhase(fabsf(errorCm), errorCm >= 0.0f ? 1 : -1);
 }
 
 void DistanceController::cancel() {
   stopAndDisable();
   state_ = State::CANCELLED;
-  completeConfirmCount_ = 0;
+  integralErrorM_ = previousVoltage_ = 0;
+  encoder_.setDistanceMode(false);
 }
 
 void DistanceController::stopAndDisable() {
@@ -168,34 +98,22 @@ void DistanceController::stopAndDisable() {
 }
 
 bool DistanceController::isActive() const {
-  return state_ == State::MOVING || state_ == State::SETTLING ||
-         state_ == State::REVERSAL_WAIT;
+  return state_ == State::MOVING || state_ == State::SETTLING;
 }
 
 DistanceController::State DistanceController::state() const { return state_; }
 
 const char* DistanceController::statusText() const {
   switch (state_) {
-    case State::IDLE:
-      return "IDLE";
+    case State::IDLE: return "IDLE";
     case State::MOVING:
-      return "MOVING";
-    case State::SETTLING:
-      return "MOVING";
-    case State::REVERSAL_WAIT:
-      return "MOVING";
-    case State::COMPLETE:
-      return "COMPLETE";
-    case State::CANCELLED:
-      return "STOPPED";
+    case State::SETTLING: return "MOVING";
+    case State::COMPLETE: return "COMPLETE";
+    case State::CANCELLED: return "STOPPED";
+    case State::FAILED: return "ERROR";
   }
   return "IDLE";
 }
 
-float DistanceController::commandDistanceCm() const {
-  return requestedDistanceCm_;
-}
-
-float DistanceController::moveStartPositionCm() const {
-  return moveStartPositionCm_;
-}
+float DistanceController::commandDistanceCm() const { return requestedDistanceCm_; }
+float DistanceController::moveStartPositionCm() const { return moveStartPositionCm_; }

@@ -10,6 +10,7 @@ Encoder::Encoder()
       direction_(1),
       lastPulseUs_(0),
       latestPeriodUs_(0),
+      distanceMode_(false),
       zeroOffsetPulses_(0),
       lastProcessedPulses_(0),
       filteredVelocityCmS_(0.0f),
@@ -36,6 +37,11 @@ void IRAM_ATTR Encoder::handleInterrupt() {
 void IRAM_ATTR Encoder::onPulse() {
   const uint32_t nowUs = micros();
 
+  if (distanceMode_ && lastPulseUs_ != 0 &&
+      nowUs - lastPulseUs_ < Config::Encoder::DISTANCE_MIN_PULSE_INTERVAL_US) {
+    return;
+  }
+
   if (lastPulseUs_ != 0) {
     latestPeriodUs_ = nowUs - lastPulseUs_;
   }
@@ -52,6 +58,18 @@ void Encoder::setDirection(int direction) {
   }
 }
 
+void Encoder::setDistanceMode(bool enabled) {
+  if (distanceMode_ == enabled) return;
+  noInterrupts();
+  distanceMode_ = enabled;
+  latestPeriodUs_ = 0;
+  lastProcessedPulses_ = signedPulses_;
+  interrupts();
+  filteredVelocityCmS_ = 0.0f;
+  velocitySampleIndex_ = velocitySampleCount_ = 0;
+  for (float& sample : velocitySamples_) sample = 0.0f;
+}
+
 void Encoder::update() {
   int32_t pulses;
   uint32_t lastPulseUs;
@@ -65,7 +83,9 @@ void Encoder::update() {
 
   const uint32_t nowUs = micros();
   const bool stopped =
-      lastPulseUs == 0 || (nowUs - lastPulseUs) >= Config::Encoder::STOP_TIMEOUT_US;
+      lastPulseUs == 0 || (nowUs - lastPulseUs) >=
+          (distanceMode_ ? Config::Encoder::DISTANCE_STOP_TIMEOUT_US
+                         : Config::Encoder::STOP_TIMEOUT_US);
 
   if (stopped) {
     filteredVelocityCmS_ = 0.0f;
@@ -75,6 +95,11 @@ void Encoder::update() {
       sample = 0.0f;
     }
     lastProcessedPulses_ = pulses;
+    return;
+  }
+
+  if (distanceMode_) {
+    updateDistanceVelocity(pulses, lastPulseUs, periodUs, nowUs);
     return;
   }
 
@@ -102,6 +127,36 @@ void Encoder::update() {
   lastProcessedPulses_ = pulses;
 }
 
+void Encoder::updateDistanceVelocity(int32_t pulses, uint32_t lastPulseUs,
+                                     uint32_t periodUs, uint32_t nowUs) {
+  if (periodUs == 0) return;
+  if (pulses != lastProcessedPulses_) {
+    const int pulseDirection = pulses > lastProcessedPulses_ ? 1 : -1;
+    velocitySamples_[velocitySampleIndex_] =
+        pulseDirection * static_cast<float>(periodUs);
+    velocitySampleIndex_ = (velocitySampleIndex_ + 1) %
+        Config::Encoder::DISTANCE_FILTER_SAMPLES;
+    if (velocitySampleCount_ < Config::Encoder::DISTANCE_FILTER_SAMPLES)
+      velocitySampleCount_++;
+    lastProcessedPulses_ = pulses;
+  }
+  if (velocitySampleCount_ == 0) return;
+  float sum = 0;
+  for (uint8_t i = 0; i < velocitySampleCount_; ++i) sum += velocitySamples_[i];
+  float period = sum / static_cast<float>(velocitySampleCount_);
+  if (velocitySampleCount_ == 3) {
+    const float a = velocitySamples_[0], b = velocitySamples_[1], c = velocitySamples_[2];
+    period = max(min(a, b), min(max(a, b), c));
+  }
+  filteredVelocityCmS_ = Config::Encoder::DISTANCE_PER_PULSE_CM * 1000000.0f / period;
+  const uint32_t age = nowUs - lastPulseUs;
+  if (age > fabsf(period)) {
+    const float speed = Config::Encoder::DISTANCE_PER_PULSE_CM * 1000000.0f / age;
+    filteredVelocityCmS_ = copysignf(min(fabsf(filteredVelocityCmS_), speed),
+                                     filteredVelocityCmS_);
+  }
+}
+
 void Encoder::zero() {
   noInterrupts();
   zeroOffsetPulses_ = signedPulses_;
@@ -119,13 +174,16 @@ float Encoder::positionCm() const {
 
 float Encoder::velocityCmS() const { return filteredVelocityCmS_; }
 
-bool Encoder::isStopped() const {
+bool Encoder::isStopped(uint32_t timeoutUs) const {
   uint32_t lastPulseUs;
   noInterrupts();
   lastPulseUs = lastPulseUs_;
   interrupts();
-  return lastPulseUs == 0 ||
-         (micros() - lastPulseUs) >= Config::Encoder::STOP_TIMEOUT_US;
+  if (timeoutUs == 0) {
+    timeoutUs = distanceMode_ ? Config::Encoder::DISTANCE_STOP_TIMEOUT_US
+                             : Config::Encoder::STOP_TIMEOUT_US;
+  }
+  return lastPulseUs == 0 || (micros() - lastPulseUs) >= timeoutUs;
 }
 
 int32_t Encoder::pulseCount() const {

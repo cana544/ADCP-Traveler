@@ -67,6 +67,8 @@ g++ -std=c++17 -Wall -Wextra -I test/DistanceControlTest/host test/DistanceContr
 & test/DistanceControlTest/host/regression.exe
 python -m unittest discover -s test/DistanceControlTest/scripts -p test_tuning.py
 node test/ui_layout_check.js
+g++ -std=c++17 -Wall -Wextra -I test/DistanceControlTest/host -I include test/DistanceControlTest/host/app_regression.cpp -o test/DistanceControlTest/host/app_regression.exe
+& test/DistanceControlTest/host/app_regression.exe
 ```
 
 C++ tests compile the real sketch with simulated Arduino I/O. They check
