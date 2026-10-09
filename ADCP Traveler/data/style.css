@@ -736,6 +736,9 @@ h2 {
   color: var(--green-strong);
 }
 
+.nav-icon svg .speed-nav-hub { fill: currentColor; stroke: none; }
+.nav-icon svg .section-nav-dot { fill: var(--card-muted); }
+
 .sr-only {
   position: absolute;
   width: 1px;
@@ -754,6 +757,7 @@ h2 {
 .section-page .hero-row { flex-direction: column; align-items: stretch; gap: 18px; }
 .section-page .system-toggle { width: 100%; }
 .section-page .status-card { margin-top: 16px; }
+#section-scan-setup .direction-row { margin-top: 12px; }
 .section-card {
   margin-top: 16px;
   padding: 20px;

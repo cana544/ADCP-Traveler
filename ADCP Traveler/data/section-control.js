@@ -39,7 +39,7 @@
       this.error = '';
       this.timer = null;
       const ids = ['state', 'span', 'total', 'next', 'next-label', 'summary', 'scan-setup',
-        'scan-lb', 'scan-rb', 'scan-note', 'config', 'count', 'count-helper', 'visuals',
+        'scan-lb', 'scan-rb', 'config', 'count', 'count-helper', 'visuals',
         'overview', 'details', 'overview-title', 'span-end', 'progress', 'return-note',
         'action', 'action-label', 'action-icon', 'new-scan', 'message'];
       this.el = {};
@@ -175,8 +175,8 @@
       const s = this.state, el = this.el;
       const view = sectionView(s, this.enabled, this.online);
       el.state.textContent = s.state;
-      el.state.classList.toggle('status-on', s.state !== 'STOPPED');
-      el.state.classList.toggle('status-off', s.state === 'STOPPED');
+      el.state.classList.toggle('status-on', this.enabled);
+      el.state.classList.toggle('status-off', !this.enabled);
       el['scan-setup'].hidden = !view.showDirection;
       el.config.hidden = !view.showConfiguration;
       el.summary.hidden = s.stage === 'PRE_SCAN';

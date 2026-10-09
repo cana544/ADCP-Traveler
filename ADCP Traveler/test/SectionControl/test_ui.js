@@ -94,6 +94,18 @@ test('locked plan cannot be changed and finished renders completion', () => {
   assert.match(nodes.get('section-progress').textContent, /All sections completed/);
 });
 
+test('traveller state colour follows system power, including STOPPED', () => {
+  const { ui, nodes } = uiRig();
+  for (const state of ['STOPPED', 'SCANNING', 'MOVING', 'FINISHED']) {
+    ui.update({ state: 'on', section: { ...ready, state } });
+    assert.equal(nodes.get('section-state').classList.contains('status-on'), true);
+    assert.equal(nodes.get('section-state').classList.contains('status-off'), false);
+    ui.update({ state: 'off', section: { ...ready, state } });
+    assert.equal(nodes.get('section-state').classList.contains('status-off'), true);
+    assert.equal(nodes.get('section-state').classList.contains('status-on'), false);
+  }
+});
+
 test('STOP remains available if an earlier GO response is delayed', async () => {
   const sent = [];
   let release;
