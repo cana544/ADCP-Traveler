@@ -7,6 +7,8 @@
 #include "distance_controller.h"
 #include "encoder.h"
 #include "motor_controller.h"
+#include "section_controller.h"
+#include "control_lock.h"
 
 class WifiHotspot {
  public:
@@ -23,6 +25,8 @@ class WifiHotspot {
   MotorController motorController_;
   Encoder encoder_;
   DistanceController distanceController_;
+  SectionController sectionController_;
+  SemaphoreHandle_t controlMutex_;
   AsyncWebServer server_;
   AsyncWebSocket ws_;
 
@@ -40,6 +44,8 @@ class WifiHotspot {
   bool startDistanceMove(float distanceCm, int direction);
   void stopDistanceMove();
   bool zeroPosition();
+  bool executeSectionCommand(const char* command, int direction, double count);
+  void handleSectionCommand(AsyncWebServerRequest* request, const char* command);
 
   String makeStateJson() const;
   void sendMotorStateResponse(AsyncWebServerRequest* request);
