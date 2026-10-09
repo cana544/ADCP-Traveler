@@ -96,7 +96,8 @@ void WifiHotspot::updatePendingManualReversal() {
 }
 
 bool WifiHotspot::startDistanceMove(float distanceCm, int direction) {
-  if (distanceCm <= 0.0f || (direction != 1 && direction != -1)) {
+  if (!isfinite(distanceCm) || distanceCm <= 0.0f ||
+      (direction != 1 && direction != -1) || distanceController_.isActive()) {
     return false;
   }
 
@@ -104,14 +105,14 @@ bool WifiHotspot::startDistanceMove(float distanceCm, int direction) {
   pendingManualSpeed_ = 0;
   motorController_.stop();
 
-  if (!encoder_.isStopped()) {
+  if (!encoder_.isStopped(Config::Encoder::DISTANCE_STOP_TIMEOUT_US)) {
     return false;
   }
 
   manualDirection_ = direction;
   encoder_.setDirection(direction);
   distanceController_.beginMove(distanceCm, direction);
-  return true;
+  return distanceController_.isActive();
 }
 
 void WifiHotspot::stopDistanceMove() {

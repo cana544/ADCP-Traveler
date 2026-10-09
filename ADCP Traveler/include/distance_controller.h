@@ -13,9 +13,9 @@ class DistanceController {
     IDLE,
     MOVING,
     SETTLING,
-    REVERSAL_WAIT,
     COMPLETE,
-    CANCELLED
+    CANCELLED,
+    FAILED
   };
 
   DistanceController(Encoder& encoder, MotorController& motor);
@@ -37,18 +37,16 @@ class DistanceController {
 
   State state_;
   uint32_t phaseStartUs_;
+  uint32_t lastUpdateUs_;
+  uint32_t settleStartUs_;
   float requestedDistanceCm_;
   float moveStartPositionCm_;
   float targetPositionCm_;
-  float phaseStartPositionCm_;
   int phaseDirection_;
   float integralErrorM_;
-  float previousVelocityErrorM_S_;
-  uint8_t completeConfirmCount_;
+  float previousVoltage_;
 
-  void startPhase(float distanceCm, int direction);
   void runControlPhase();
-  void startCorrectionIfNeeded();
   void stopAndDisable();
 };
 
