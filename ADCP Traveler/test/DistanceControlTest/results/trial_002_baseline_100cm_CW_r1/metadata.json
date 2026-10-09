@@ -1,0 +1,44 @@
+{
+  "id": "trial_002_baseline_100cm_CW_r1",
+  "distance": 100.0,
+  "direction": 1,
+  "stage": "baseline",
+  "repeat": 1,
+  "settings": {
+    "vmax": 20.0,
+    "amax": 10.0,
+    "positionKp": 3.0,
+    "velocityKp": 13.0,
+    "velocityKi": 2.0,
+    "feedforward": 26.9608,
+    "friction": 2.0
+  },
+  "timestamp": "2026-10-09T12:36:39",
+  "metrics": {
+    "outcome": "COMPLETE",
+    "samples": 161,
+    "screen_pass": false,
+    "screen_reasons": [
+      "velocity RMSE exceeds 15% screening target",
+      "less than one second recorded after COMPLETE"
+    ],
+    "final_error_cm": 0.09739999999999327,
+    "overshoot_cm": 0.0,
+    "velocity_rmse_cm_s": 5.147899691864635,
+    "normalised_rmse": 0.25739498459323173,
+    "peak_velocity_error_cm_s": 32.5969,
+    "expected_duration_s": 7.0,
+    "duration_s": 8.0226,
+    "intermediate_stops": 0,
+    "restart_kicks": 0,
+    "post_stop_motion_cm": 0.0,
+    "post_stop_pwm_max": 0,
+    "peak_pwm": 150,
+    "startup_delay_s": 0.2223,
+    "post_completion_capture_s": 0.0,
+    "post_completion_motion_cm": 0.0,
+    "max_position_tracking_error_cm": 2.1438,
+    "profile_type": "TRAPEZOIDAL"
+  },
+  "analysis_version": "post-completion-v3"
+}

@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <sstream>
 using std::min;
 using std::max;
 constexpr float PI = 3.14159265358979323846f;
@@ -28,8 +29,15 @@ template <typename T> T constrain(T x, T lo, T hi) {
   return min(max(x, lo), hi);
 }
 struct FakeSerial {
+  std::string output;
+  int available() { return 0; }
+  char read() { return 0; }
   void begin(int) {}
-  template <typename T> void print(T, int = 0) {}
-  template <typename T> void println(T, int = 0) {}
+  template <typename T> void print(T value, int = 0) {
+    std::ostringstream stream; stream << value; output += stream.str();
+  }
+  template <typename T> void println(T value, int digits = 0) {
+    print(value, digits); output += '\n';
+  }
 };
 inline FakeSerial Serial;

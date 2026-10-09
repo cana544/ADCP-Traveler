@@ -1,0 +1,47 @@
+{
+  "id": "trial_043_range_sweep_500cm_CCW_r1",
+  "distance": 500.0,
+  "direction": -1,
+  "stage": "range_sweep",
+  "repeat": 1,
+  "settings": {
+    "vmax": 20,
+    "amax": 10,
+    "positionKp": 3,
+    "velocityKp": 13,
+    "velocityKi": 2,
+    "feedforward": 23,
+    "friction": 1.8
+  },
+  "timestamp": "2026-10-09T12:53:28",
+  "firmware_source_sha256": "ead2010aa7f7554a08bedf56f1e5f33641d1be927a641753aabd943c3c9ccdc1",
+  "metrics": {
+    "outcome": "ENDPOINT_ERROR",
+    "samples": 584,
+    "screen_pass": false,
+    "screen_reasons": [
+      "terminal outcome: ENDPOINT_ERROR",
+      "final error exceeds one pulse",
+      "velocity RMSE exceeds 15% screening target",
+      "less than one second recorded after COMPLETE"
+    ],
+    "final_error_cm": -97.24779999999998,
+    "overshoot_cm": 0.0,
+    "velocity_rmse_cm_s": 5.068017198184574,
+    "normalised_rmse": 0.25340085990922867,
+    "peak_velocity_error_cm_s": 15.7848,
+    "expected_duration_s": 27.0,
+    "duration_s": 29.2,
+    "intermediate_stops": 0,
+    "restart_kicks": 0,
+    "post_stop_motion_cm": 0.0,
+    "post_stop_pwm_max": 0,
+    "peak_pwm": 189,
+    "startup_delay_s": 0.2985,
+    "post_completion_capture_s": 0.0,
+    "post_completion_motion_cm": null,
+    "max_position_tracking_error_cm": 112.3252,
+    "profile_type": "TRAPEZOIDAL"
+  },
+  "analysis_version": "post-completion-v3"
+}

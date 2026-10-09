@@ -1,0 +1,45 @@
+{
+  "id": "trial_029_low_friction_10cm_CCW_r1",
+  "distance": 10.0,
+  "direction": -1,
+  "stage": "low_friction",
+  "repeat": 1,
+  "settings": {
+    "vmax": 20,
+    "amax": 10,
+    "positionKp": 3,
+    "velocityKp": 8,
+    "velocityKi": 2,
+    "feedforward": 23,
+    "friction": 1.6
+  },
+  "timestamp": "2026-10-09T12:45:03",
+  "firmware_source_sha256": "4defa0faf2a77e5ecc75efa3560e1f3360d5240acc97d382114daf0aa66f5348",
+  "metrics": {
+    "outcome": "COMPLETE",
+    "samples": 61,
+    "screen_pass": false,
+    "screen_reasons": [
+      "velocity RMSE exceeds 15% screening target",
+      "less than one second recorded after COMPLETE"
+    ],
+    "final_error_cm": 0.05310000000000059,
+    "overshoot_cm": 0.05310000000000059,
+    "velocity_rmse_cm_s": 1.7723354286082533,
+    "normalised_rmse": 0.17723354286082532,
+    "peak_velocity_error_cm_s": 3.805,
+    "expected_duration_s": 2.0,
+    "duration_s": 3.0306,
+    "intermediate_stops": 0,
+    "restart_kicks": 0,
+    "post_stop_motion_cm": 0.0,
+    "post_stop_pwm_max": 0,
+    "peak_pwm": 79,
+    "startup_delay_s": 0.3305,
+    "post_completion_capture_s": 0.0,
+    "post_completion_motion_cm": 0.0,
+    "max_position_tracking_error_cm": 0.8973,
+    "profile_type": "TRIANGULAR"
+  },
+  "analysis_version": "post-completion-v3"
+}
