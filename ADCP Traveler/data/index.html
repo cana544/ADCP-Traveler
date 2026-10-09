@@ -167,14 +167,9 @@
 
                 <section class="status-card" aria-label="Distance status">
                   <div class="status-item">
-                    <div class="status-icon status-icon-state" aria-hidden="true">
-                      <svg viewBox="0 0 24 24" role="presentation">
-                        <path d="M12 2.8v7.8" />
-                        <path d="M7.2 5.5a8.4 8.4 0 1 0 9.6 0" />
-                      </svg>
-                    </div>
+                    <div class="status-icon status-icon-motor" aria-hidden="true">T</div>
                     <div>
-                      <p class="status-label">Current State</p>
+                      <p class="status-label">Traveller State</p>
                       <p class="status-value motor-state-value status-off">STOPPED</p>
                     </div>
                   </div>
@@ -253,7 +248,6 @@
                   </button>
                 </div>
 
-                <p class="zero-helper">Set current position as new zero</p>
                 <p id="distance-message" class="message" aria-live="polite"></p>
                 <p id="distance-connection-message" class="message connection-message connection-note" aria-live="polite"></p>
               </div>

@@ -53,8 +53,7 @@ class MotorController {
         enabled_(false),
         currentSpeed_(0) {}
 
-  void begin(uint8_t rpwmPin, uint8_t lpwmPin, uint8_t renPin,
-             uint8_t lenPin) {
+  void begin(uint8_t rpwmPin, uint8_t lpwmPin, uint8_t renPin, uint8_t lenPin) {
     rpwmPin_ = rpwmPin;
     lpwmPin_ = lpwmPin;
     renPin_ = renPin;
@@ -161,6 +160,7 @@ class MotorController {
 
 class Encoder {
   friend class DistanceController;
+
  public:
   Encoder()
       : pin_(Config::Pins::ENCODER),
@@ -220,10 +220,10 @@ class Encoder {
       const int pulseDirection = pulses > lastProcessedPulses_ ? 1 : -1;
       // Average periods before taking the reciprocal; averaging speeds
       // overweights short intervals and produces large false velocity spikes.
-      velocitySamples_[velocitySampleIndex_] = pulseDirection * static_cast<float>(periodUs);
-      velocitySampleIndex_ =
-          (velocitySampleIndex_ + 1) %
-          Config::EncoderConfig::VELOCITY_FILTER_SAMPLES;
+      velocitySamples_[velocitySampleIndex_] =
+          pulseDirection * static_cast<float>(periodUs);
+      velocitySampleIndex_ = (velocitySampleIndex_ + 1) %
+                             Config::EncoderConfig::VELOCITY_FILTER_SAMPLES;
       if (velocitySampleCount_ <
           Config::EncoderConfig::VELOCITY_FILTER_SAMPLES) {
         velocitySampleCount_++;
@@ -244,11 +244,12 @@ class Encoder {
       // Median smooths one isolated interval without throwing away counts
       // or over-weighting its reciprocal. It also avoids count lockout after
       // real speed changes; every edge above the fixed debounce floor counts.
-      const float a = velocitySamples_[0], b = velocitySamples_[1], c = velocitySamples_[2];
+      const float a = velocitySamples_[0], b = velocitySamples_[1],
+                  c = velocitySamples_[2];
       meanPeriodUs = max(min(a, b), min(max(a, b), c));
     }
     filteredVelocityCmS_ = Config::EncoderConfig::DISTANCE_PER_PULSE_CM *
-                          1000000.0f / meanPeriodUs;
+                           1000000.0f / meanPeriodUs;
     // If the next pulse is late, bound speed by elapsed pulse time.
     // This follows deceleration between pulses without injecting zero
     // readings and resetting the filter while the wheel is still moving.
@@ -257,9 +258,9 @@ class Encoder {
       const float ageLimitedSpeed =
           Config::EncoderConfig::DISTANCE_PER_PULSE_CM * 1000000.0f /
           static_cast<float>(pulseAgeUs);
-      filteredVelocityCmS_ = copysignf(
-          min(fabsf(filteredVelocityCmS_), ageLimitedSpeed),
-          filteredVelocityCmS_);
+      filteredVelocityCmS_ =
+          copysignf(min(fabsf(filteredVelocityCmS_), ageLimitedSpeed),
+                    filteredVelocityCmS_);
     }
   }
 
@@ -326,9 +327,8 @@ void IRAM_ATTR Encoder::handleInterrupt() {
 
 void IRAM_ATTR Encoder::onPulse() {
   const uint32_t nowUs = micros();
-  if (lastPulseUs_ != 0 &&
-      (uint32_t)(nowUs - lastPulseUs_) <
-          Config::EncoderConfig::MIN_PULSE_INTERVAL_US) {
+  if (lastPulseUs_ != 0 && (uint32_t)(nowUs - lastPulseUs_) <
+                               Config::EncoderConfig::MIN_PULSE_INTERVAL_US) {
     return;
   }
 
