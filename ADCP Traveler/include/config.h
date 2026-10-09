@@ -35,6 +35,10 @@ constexpr float V_MAX_CM_S = 20.0f;
 constexpr float A_MAX_CM_S2 = 10.0f;
 }  // namespace Motion
 
+namespace Section {
+constexpr uint32_t SCAN_RAMP_DURATION_US = 4000000UL;
+}  // namespace Section
+
 namespace Control {
 constexpr float POSITION_KP = 3.0f;
 constexpr float VELOCITY_KP = 13.0f;
