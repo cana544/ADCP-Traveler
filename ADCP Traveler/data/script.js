@@ -1,3 +1,6 @@
+const headerBattery = document.querySelector('.header-battery');
+const batteryFill = document.querySelector('.battery-fill');
+const batteryReadout = document.querySelector('.battery-readout');
 const stateElements = Array.from(document.querySelectorAll('.motor-state-value'));
 const wifiSignalElements = Array.from(document.querySelectorAll('.wifi-signal-value'));
 const messageElement = document.getElementById('message');
@@ -39,6 +42,11 @@ let swipeStartY = 0;
 let isSwiping = false;
 let selectedDistanceDirection = null;
 let motorEnabled = false;
+let stateBootId = null;
+let stateSequence = null;
+const retiredBootIds = new Set();
+let stateBootGeneration = 0;
+const sectionUI = new SectionControlUI(document, sendSectionCommand);
 
 const arcConfig = {
   cx: 200,
@@ -249,7 +257,22 @@ function updateDistanceState(data) {
   distanceStopButton.disabled = false;
 }
 
-function applyStateMessage(data) {
+function applyStateMessage(data, requestGeneration) {
+  if (Number.isFinite(data.stateSequence)) {
+    if (requestGeneration !== undefined && requestGeneration !== stateBootGeneration &&
+        data.bootId !== stateBootId) return;
+    if (retiredBootIds.has(data.bootId)) return;
+    if (data.bootId === stateBootId && stateSequence !== null &&
+        ((data.stateSequence - stateSequence) | 0) <= 0) return;
+    if (data.bootId !== stateBootId) {
+      if (stateBootId !== null) retiredBootIds.add(stateBootId);
+      ++stateBootGeneration;
+    }
+    stateBootId = data.bootId;
+    stateSequence = data.stateSequence;
+  }
+  if (Object.prototype.hasOwnProperty.call(data, 'batteryValid')) updateBattery(data);
+  sectionUI.update(data);
   if (typeof data.error === 'string') {
     messageElement.textContent = data.error;
     distanceMessage.textContent = data.error;
@@ -260,6 +283,22 @@ function applyStateMessage(data) {
   }
 
   updateDistanceState(data);
+}
+
+function updateBattery(data) {
+  if (!headerBattery || !batteryFill || !batteryReadout) return;
+  const valid = data.batteryValid === true &&
+    Number.isFinite(data.batteryVoltage) && data.batteryVoltage > 0 &&
+    Number.isFinite(data.batteryPercent);
+  const percent = valid ? Math.min(100, Math.max(0, data.batteryPercent)) : 0;
+  const height = 15 * percent / 100;
+  batteryFill.setAttribute('height', String(height));
+  batteryFill.setAttribute('y', String(21 - height));
+  headerBattery.dataset.level = valid ? (percent <= 20 ? 'low' : 'normal') : 'unavailable';
+  const text = valid ? `${data.batteryVoltage.toFixed(1)} V | ~${Math.round(percent)}%` : 'Unavailable';
+  batteryReadout.textContent = text;
+  headerBattery.setAttribute('aria-label', valid ? `Battery ${text}, estimated charge` : 'Battery unavailable');
+  headerBattery.setAttribute('title', valid ? `${text} (estimated charge)` : 'Battery unavailable');
 }
 
 function updateWifiSignal(data) {
@@ -303,7 +342,10 @@ async function refreshWifiSignal() {
 }
 
 function setConnectionState(isConnected) {
-  if (!isConnected) updateWifiSignal({ connected: false });
+  if (!isConnected) {
+    updateWifiSignal({ connected: false });
+    updateBattery({ batteryValid: false });
+  }
   else refreshWifiSignal();
 }
 
@@ -315,7 +357,13 @@ function setConnectionMessage(text) {
 
 function showPage(pageIndex) {
   currentPage = clamp(pageIndex, 0, pageButtons.length - 1);
-  pageTrack.style.transform = `translateX(-${currentPage * 50}%)`;
+  Array.from(pageTrack.querySelectorAll('.app-page')).forEach((page, index) => {
+    // Animate each page independently so nonadjacent tabs never travel through
+    // the intervening page. Offscreen pages stay on their navigation side.
+    page.style.transform = `translateX(${index === currentPage ? 0 : index < currentPage ? -100 : 100}%)`;
+    page.setAttribute('aria-hidden', String(index !== currentPage));
+    page.inert = index !== currentPage;
+  });
 
   pageButtons.forEach((button, index) => {
     const active = index === currentPage;
@@ -325,7 +373,7 @@ function showPage(pageIndex) {
 }
 
 function handleSwipeStart(event) {
-  if (event.target.closest('button, input, .arc-hit-area')) {
+  if (event.target.closest('button, input, .arc-hit-area, .section-details, .section-overview')) {
     isSwiping = false;
     return;
   }
@@ -374,11 +422,13 @@ function connectWebSocket() {
   };
 
   ws.onerror = () => {
+    sectionUI.setOnline(false);
     setConnectionState(false, 'CONNECTION ERROR');
     setConnectionMessage('WebSocket Connection Error');
   };
 
   ws.onclose = () => {
+    sectionUI.setOnline(false);
     setConnectionState(false, 'DISCONNECTED');
     setConnectionMessage('Disconnected From ESP32. Reconnecting');
     setButtonsDisabled(true);
@@ -395,6 +445,7 @@ function sendWebSocketCommand(cmd) {
 }
 
 async function sendHttpCommand(cmd) {
+  const requestGeneration = stateBootGeneration;
   let endpoint = null;
   if (cmd.cmd === 'speed') endpoint = `/motor/speed?value=${encodeURIComponent(cmd.value)}`;
   else if (cmd.cmd === 'on') endpoint = '/motor/on';
@@ -412,7 +463,7 @@ async function sendHttpCommand(cmd) {
     const response = await fetch(endpoint, { cache: 'no-store' });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
-    applyStateMessage(data);
+    applyStateMessage(data, requestGeneration);
   } catch (error) {
     if (cmd.cmd.startsWith('distance_')) {
       distanceMessage.textContent = error.message;
@@ -426,6 +477,51 @@ async function sendHttpCommand(cmd) {
 
 function sendCommand(cmd) {
   if (!sendWebSocketCommand(cmd)) sendHttpCommand(cmd);
+}
+
+async function sendSectionCommand(cmd) {
+  const requestGeneration = stateBootGeneration;
+  const action = cmd.cmd.slice('section_'.length);
+  if (action === 'stop' && sendWebSocketCommand(cmd)) {
+    // Use one mutation transport. A delayed duplicate STOP must not cancel a
+    // subsequent GO after the traveller has already acknowledged the first STOP.
+    await refreshSectionStatus();
+    return null;
+  }
+  const params = new URLSearchParams();
+  if (cmd.direction !== undefined) params.set('direction', cmd.direction);
+  if (cmd.count !== undefined) params.set('count', String(cmd.count));
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  try {
+    const response = await fetch(`/section/${action}?${params}`, {
+      cache: 'no-store', signal: controller.signal,
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      await refreshSectionStatus();
+      throw new Error(data.sectionError || `HTTP ${response.status}`);
+    }
+    applyStateMessage(data, requestGeneration);
+    return null; // State ordering is handled centrally, including delayed responses.
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function refreshSectionStatus() {
+  const requestGeneration = stateBootGeneration;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  try {
+    const response = await fetch('/section/status', { cache: 'no-store', signal: controller.signal });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    applyStateMessage(await response.json(), requestGeneration);
+  } catch (error) {
+    sectionUI.setOnline(false);
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function sendSpeedValue(speedValue) {
@@ -617,3 +713,7 @@ setConnectionState(false, 'CONNECTING');
 connectWebSocket();
 refreshWifiSignal();
 setInterval(refreshWifiSignal, 5000);
+refreshSectionStatus();
+setInterval(() => {
+  if (!ws || ws.readyState !== WebSocket.OPEN) refreshSectionStatus();
+}, 1000);

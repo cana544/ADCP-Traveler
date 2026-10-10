@@ -4,6 +4,8 @@
 #include <SPIFFS.h>
 #include <WiFi.h>
 #include <esp_wifi.h>
+#include <esp_system.h>
+#include <cstdlib>
 
 #include "config.h"
 #include "wifi_signal_reporter.h"
@@ -23,6 +25,10 @@ WifiHotspot::WifiHotspot()
     : motorController_(),
       encoder_(),
       distanceController_(encoder_, motorController_),
+      sectionController_(encoder_, motorController_, distanceController_),
+      controlMutex_(xSemaphoreCreateRecursiveMutex()),
+      bootId_(esp_random()),
+      stateSequence_(0),
       server_(80),
       ws_("/ws"),
       pendingManualSpeed_(0),
@@ -32,8 +38,10 @@ WifiHotspot::WifiHotspot()
       lastStateBroadcastMs_(0) {}
 
 void WifiHotspot::setMotorEnabled(bool enabled) {
+  ControlLock lock(controlMutex_);
   if (!enabled) {
-    cancelDistanceForManualControl();
+    sectionController_.stop();
+    if (distanceController_.isActive()) distanceController_.cancel();
     manualReversalPending_ = false;
     pendingManualSpeed_ = 0;
   }
@@ -43,12 +51,14 @@ void WifiHotspot::setMotorEnabled(bool enabled) {
 void WifiHotspot::setMotorSpeed(int speed) { applyManualSpeed(speed); }
 
 void WifiHotspot::cancelDistanceForManualControl() {
+  sectionController_.invalidate();
   if (distanceController_.isActive()) {
     distanceController_.cancel();
   }
 }
 
 void WifiHotspot::applyManualSpeed(int speed) {
+  ControlLock lock(controlMutex_);
   if (!motorController_.isEnabled()) {
     manualReversalPending_ = false;
     pendingManualSpeed_ = 0;
@@ -101,8 +111,10 @@ void WifiHotspot::updatePendingManualReversal() {
 }
 
 bool WifiHotspot::startDistanceMove(float distanceCm, int direction) {
+  ControlLock lock(controlMutex_);
   if (!isfinite(distanceCm) || distanceCm <= 0.0f ||
-      (direction != 1 && direction != -1) || distanceController_.isActive()) {
+      (direction != 1 && direction != -1) || distanceController_.isActive() ||
+      sectionController_.active()) {
     return false;
   }
 
@@ -115,27 +127,44 @@ bool WifiHotspot::startDistanceMove(float distanceCm, int direction) {
   }
 
   manualDirection_ = direction;
+  sectionController_.invalidate();
   encoder_.setDirection(direction);
   distanceController_.beginMove(distanceCm, direction);
   return distanceController_.isActive();
 }
 
 void WifiHotspot::stopDistanceMove() {
+  ControlLock lock(controlMutex_);
+  sectionController_.stop();
   distanceController_.cancel();
   manualReversalPending_ = false;
   pendingManualSpeed_ = 0;
 }
 
 bool WifiHotspot::zeroPosition() {
-  if (distanceController_.isActive() || !encoder_.isStopped()) {
+  ControlLock lock(controlMutex_);
+  if (sectionController_.active() || distanceController_.isActive() ||
+      motorController_.currentSpeed() != 0 || !encoder_.isStopped()) {
     return false;
   }
   encoder_.zero();
+  sectionController_.invalidate();
   return true;
 }
 
 String WifiHotspot::makeStateJson() const {
-  DynamicJsonDocument response(384);
+  ControlLock lock(controlMutex_);
+  DynamicJsonDocument response(4096);
+  response["batteryValid"] = batteryMonitor_.valid();
+  if (batteryMonitor_.valid()) {
+    response["batteryVoltage"] = batteryMonitor_.voltage();
+    response["batteryPercent"] = batteryMonitor_.percent();
+  } else {
+    response["batteryVoltage"] = nullptr;
+    response["batteryPercent"] = nullptr;
+  }
+  response["bootId"] = bootId_;
+  response["stateSequence"] = ++stateSequence_;
   response["state"] = motorController_.isEnabled() ? "on" : "off";
   response["speed"] = motorController_.currentSpeed();
   response["positionCm"] = encoder_.positionCm();
@@ -143,6 +172,24 @@ String WifiHotspot::makeStateJson() const {
   response["distanceStatus"] = distanceController_.statusText();
   response["distanceActive"] = distanceController_.isActive();
   response["distanceCm"] = distanceController_.commandDistanceCm();
+  JsonObject section = response.createNestedObject("section");
+  section["stage"] = sectionController_.stageText();
+  section["state"] = sectionController_.stateText();
+  section["scanDirection"] = sectionController_.scanDirection() == 1 ? "cw" : "ccw";
+  section["spanCm"] = sectionController_.spanCm();
+  section["count"] = sectionController_.plan().count;
+  section["maxCount"] = sectionController_.stage() == SectionController::Stage::SCANNING
+      ? 0 : SectionPlan::maxValidCount(sectionController_.spanCm());
+  section["completed"] = sectionController_.completedCount();
+  section["nextSection"] = sectionController_.nextSection();
+  section["lastCompletedSection"] = sectionController_.lastCompletedSection();
+  section["remainingCm"] = sectionController_.remainingCm();
+  section["locked"] = sectionController_.locked();
+  section["stationary"] = sectionController_.stationary();
+  section["error"] = sectionController_.error();
+  JsonArray widths = section.createNestedArray("widthsCm");
+  for (int i = 0; i < sectionController_.plan().count; ++i)
+    widths.add(sectionController_.plan().widthsCm[i]);
 
   String responseStr;
   serializeJson(response, responseStr);
@@ -231,7 +278,9 @@ void WifiHotspot::handleRoot(AsyncWebServerRequest* request) {
 }
 
 void WifiHotspot::handleMotorOn(AsyncWebServerRequest* request) {
-  cancelDistanceForManualControl();
+  ControlLock lock(controlMutex_);
+  sectionController_.stop();
+  if (distanceController_.isActive()) distanceController_.cancel();
   motorController_.setEnabled(true);
   motorController_.stop();
   broadcastMotorState();
@@ -239,6 +288,7 @@ void WifiHotspot::handleMotorOn(AsyncWebServerRequest* request) {
 }
 
 void WifiHotspot::handleMotorOff(AsyncWebServerRequest* request) {
+  ControlLock lock(controlMutex_);
   stopDistanceMove();
   motorController_.stop();
   motorController_.setEnabled(false);
@@ -251,6 +301,7 @@ void WifiHotspot::handleMotorStatus(AsyncWebServerRequest* request) {
 }
 
 void WifiHotspot::handleMotorSpeed(AsyncWebServerRequest* request) {
+  ControlLock lock(controlMutex_);
   if (!motorController_.isEnabled()) {
     request->send(409, "application/json",
                   "{\"error\":\"Enable Traveller First\"}");
@@ -275,6 +326,7 @@ void WifiHotspot::handleMotorSpeed(AsyncWebServerRequest* request) {
 }
 
 void WifiHotspot::handleDistanceStart(AsyncWebServerRequest* request) {
+  ControlLock lock(controlMutex_);
   if (!request->hasParam("distance") || !request->hasParam("direction")) {
     request->send(400, "application/json",
                   "{\"error\":\"Missing distance or direction\"}");
@@ -298,12 +350,14 @@ void WifiHotspot::handleDistanceStart(AsyncWebServerRequest* request) {
 }
 
 void WifiHotspot::handleDistanceStop(AsyncWebServerRequest* request) {
+  ControlLock lock(controlMutex_);
   stopDistanceMove();
   broadcastMotorState();
   sendDistanceStateResponse(request);
 }
 
 void WifiHotspot::handleDistanceZero(AsyncWebServerRequest* request) {
+  ControlLock lock(controlMutex_);
   if (!zeroPosition()) {
     request->send(409, "application/json",
                   "{\"error\":\"Cannot zero while traveller is moving\"}");
@@ -317,6 +371,60 @@ void WifiHotspot::handleDistanceStatus(AsyncWebServerRequest* request) {
   sendDistanceStateResponse(request);
 }
 
+bool WifiHotspot::executeSectionCommand(const char* command, int direction, double count) {
+  bool accepted = false;
+  if (strcmp(command, "section_scan") == 0) {
+    accepted = sectionController_.startScan(direction);
+    if (accepted) {
+      manualReversalPending_ = false;
+      pendingManualSpeed_ = 0;
+      manualDirection_ = direction;
+    }
+  } else if (strcmp(command, "section_stop") == 0) {
+    sectionController_.stop();
+    accepted = true;
+  } else if (strcmp(command, "section_configure") == 0) {
+    accepted = sectionController_.configure(count);
+  } else if (strcmp(command, "section_go") == 0) {
+    accepted = sectionController_.go();
+    if (accepted) {
+      manualReversalPending_ = false;
+      pendingManualSpeed_ = 0;
+      manualDirection_ = -sectionController_.scanDirection();
+    }
+  } else if (strcmp(command, "section_new_scan") == 0) {
+    accepted = sectionController_.newScan();
+  } else if (strcmp(command, "section_status") == 0) {
+    accepted = true;
+  }
+  return accepted;
+}
+
+void WifiHotspot::handleSectionCommand(AsyncWebServerRequest* request, const char* command) {
+  ControlLock lock(controlMutex_);
+  int direction = 0;
+  if (request->hasParam("direction")) {
+    const String value = request->getParam("direction")->value();
+    direction = value == "cw" ? 1 : value == "ccw" ? -1 : 0;
+  }
+  double count = NAN;
+  if (request->hasParam("count")) {
+    const String value = request->getParam("count")->value();
+    char* end = nullptr;
+    count = std::strtod(value.c_str(), &end);
+    if (end == value.c_str() || *end != '\0') count = NAN;
+  }
+  if (!executeSectionCommand(command, direction, count)) {
+    DynamicJsonDocument failure(256);
+    failure["sectionError"] = sectionController_.error();
+    String payload; serializeJson(failure, payload);
+    request->send(409, "application/json", payload);
+  } else {
+    request->send(200, "application/json", makeStateJson());
+  }
+  broadcastMotorState();
+}
+
 void WifiHotspot::handleWifiSignal(AsyncWebServerRequest* request) {
   sendWifiSignalResponse(request);
 }
@@ -328,6 +436,7 @@ void WifiHotspot::handleNotFound(AsyncWebServerRequest* request) {
 void WifiHotspot::handleWebSocketEvent(AsyncWebSocketClient* client,
                                        AwsEventType type, uint8_t* data,
                                        size_t len) {
+  ControlLock lock(controlMutex_);
   switch (type) {
     case WS_EVT_CONNECT:
       Serial.printf("WebSocket client %u connected\n", client->id());
@@ -348,6 +457,22 @@ void WifiHotspot::handleWebSocketEvent(AsyncWebSocketClient* client,
         return;
       }
 
+      if (strncmp(cmd, "section_", 8) == 0) {
+        const char* directionText = doc["direction"].is<const char*>()
+            ? doc["direction"].as<const char*>() : "";
+        const int direction = strcmp(directionText, "cw") == 0 ? 1
+            : strcmp(directionText, "ccw") == 0 ? -1 : 0;
+        const double count = doc["count"].is<double>() ? doc["count"].as<double>() : NAN;
+        if (!executeSectionCommand(cmd, direction, count)) {
+          DynamicJsonDocument failure(256);
+          failure["sectionError"] = sectionController_.error();
+          String payload; serializeJson(failure, payload); client->text(payload);
+        }
+        client->text(makeStateJson());
+        broadcastMotorState();
+        return;
+      }
+
       if (!motorController_.isEnabled() &&
           strcmp(cmd, "speed") == 0) {
         client->text("{\"error\":\"Enable Traveller First\"}");
@@ -358,7 +483,8 @@ void WifiHotspot::handleWebSocketEvent(AsyncWebSocketClient* client,
       if (strcmp(cmd, "speed") == 0 && doc.containsKey("value")) {
         setMotorSpeed(doc["value"].as<int>());
       } else if (strcmp(cmd, "on") == 0) {
-        cancelDistanceForManualControl();
+        sectionController_.stop();
+        if (distanceController_.isActive()) distanceController_.cancel();
         motorController_.setEnabled(true);
         motorController_.stop();
       } else if (strcmp(cmd, "off") == 0) {
@@ -368,7 +494,8 @@ void WifiHotspot::handleWebSocketEvent(AsyncWebSocketClient* client,
       } else if (strcmp(cmd, "distance_start") == 0 &&
                  doc.containsKey("distanceCm") &&
                  doc.containsKey("direction")) {
-        const char* directionText = doc["direction"];
+        const char* directionText = doc["direction"].is<const char*>()
+            ? doc["direction"].as<const char*>() : "";
         const int direction = strcmp(directionText, "cw") == 0    ? 1
                               : strcmp(directionText, "ccw") == 0 ? -1
                                                                   : 0;
@@ -398,10 +525,12 @@ void WifiHotspot::handleWebSocketEvent(AsyncWebSocketClient* client,
 
 void WifiHotspot::begin(uint8_t rpwmPin, uint8_t lpwmPin, uint8_t renPin,
                         uint8_t lenPin) {
+  if (!controlMutex_) { Serial.println("Unable to allocate control mutex"); return; }
   g_activeHotspot = this;
 
   motorController_.begin(rpwmPin, lpwmPin, renPin, lenPin);
   encoder_.begin(Config::Pins::ENCODER);
+  batteryMonitor_.begin();
 
   WiFi.mode(WIFI_AP);
   const bool started =
@@ -430,6 +559,9 @@ void WifiHotspot::begin(uint8_t rpwmPin, uint8_t lpwmPin, uint8_t renPin,
   });
   server_.on("/script.js", HTTP_GET, [this](AsyncWebServerRequest* request) {
     serveFile(request, "/script.js", "application/javascript");
+  });
+  server_.on("/section-control.js", HTTP_GET, [this](AsyncWebServerRequest* request) {
+    serveFile(request, "/section-control.js", "application/javascript");
   });
   server_.on("/uoa-logo-white.png", HTTP_GET,
              [this](AsyncWebServerRequest* request) {
@@ -466,6 +598,14 @@ void WifiHotspot::begin(uint8_t rpwmPin, uint8_t lpwmPin, uint8_t renPin,
   server_.on("/wifi/signal", HTTP_GET, [this](AsyncWebServerRequest* request) {
     handleWifiSignal(request);
   });
+  const char* sectionActions[] = {"scan", "stop", "configure", "go", "new_scan", "status"};
+  for (const char* action : sectionActions) {
+    const String command = String("section_") + action;
+    server_.on((String("/section/") + action).c_str(), HTTP_GET,
+        [this, command](AsyncWebServerRequest* request) {
+          handleSectionCommand(request, command.c_str());
+        });
+  }
   server_.onNotFound(
       [this](AsyncWebServerRequest* request) { handleNotFound(request); });
 
@@ -479,14 +619,18 @@ void WifiHotspot::begin(uint8_t rpwmPin, uint8_t lpwmPin, uint8_t renPin,
 }
 
 void WifiHotspot::update() {
+  ControlLock lock(controlMutex_);
   const uint32_t nowUs = micros();
   if ((uint32_t)(nowUs - lastControlUs_) >=
       Config::Control::CONTROL_PERIOD_US) {
     lastControlUs_ += Config::Control::CONTROL_PERIOD_US;
     encoder_.update();
     distanceController_.update();
+    sectionController_.update();
     updatePendingManualReversal();
   }
+
+  batteryMonitor_.update();
 
   const uint32_t nowMs = millis();
   if ((uint32_t)(nowMs - lastStateBroadcastMs_) >= 200UL) {
@@ -500,5 +644,6 @@ void WifiHotspot::update() {
 }
 
 bool WifiHotspot::isMotorEnabled() const {
+  ControlLock lock(controlMutex_);
   return motorController_.isEnabled();
 }

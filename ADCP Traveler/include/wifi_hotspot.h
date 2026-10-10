@@ -4,9 +4,12 @@
 #include <Arduino.h>
 #include <ESPAsyncWebServer.h>
 
+#include "battery_monitor.h"
 #include "distance_controller.h"
 #include "encoder.h"
 #include "motor_controller.h"
+#include "section_controller.h"
+#include "control_lock.h"
 
 class WifiHotspot {
  public:
@@ -20,9 +23,14 @@ class WifiHotspot {
                             uint8_t* data, size_t len);
 
  private:
+  BatteryMonitor batteryMonitor_;
   MotorController motorController_;
   Encoder encoder_;
   DistanceController distanceController_;
+  SectionController sectionController_;
+  SemaphoreHandle_t controlMutex_;
+  uint32_t bootId_;
+  mutable uint32_t stateSequence_;
   AsyncWebServer server_;
   AsyncWebSocket ws_;
 
@@ -40,6 +48,8 @@ class WifiHotspot {
   bool startDistanceMove(float distanceCm, int direction);
   void stopDistanceMove();
   bool zeroPosition();
+  bool executeSectionCommand(const char* command, int direction, double count);
+  void handleSectionCommand(AsyncWebServerRequest* request, const char* command);
 
   String makeStateJson() const;
   void sendMotorStateResponse(AsyncWebServerRequest* request);

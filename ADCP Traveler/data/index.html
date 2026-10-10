@@ -10,7 +10,7 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <title>Gauge Glide</title>
-    <link rel="stylesheet" href="/style.css?v=ui-refresh-15" />
+    <link rel="stylesheet" href="/style.css?v=battery-monitor-1" />
   </head>
   <body>
     <main class="app-shell">
@@ -34,12 +34,15 @@
                 <path class="wifi-disconnected-cross" d="M6 5 18 17 M18 5 6 17" />
               </svg>
             </div>
-            <div class="header-battery" role="img" aria-label="Battery Full (Fixed Display)">
+            <div class="battery-status">
+            <div class="header-battery" role="img" data-level="unavailable" aria-label="Battery unavailable">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <rect class="battery-terminal" x="9" y="1" width="6" height="2" rx="1" />
                 <rect class="battery-outline" x="5" y="4" width="14" height="19" rx="3" />
-                <rect class="battery-fill" x="7" y="6" width="10" height="15" rx="1" />
+                <rect class="battery-fill" x="7" y="21" width="10" height="0" rx="1" />
               </svg>
+            </div>
+            <span class="battery-readout">Unavailable</span>
             </div>
           </div>
         </header>
@@ -252,6 +255,66 @@
                 <p id="distance-connection-message" class="message connection-message connection-note" aria-live="polite"></p>
               </div>
             </section>
+            <section class="app-page section-page" aria-labelledby="section-page-title">
+              <div class="page-content control-card">
+                <div class="hero-row">
+                  <div>
+                    <h1 id="section-page-title">Section Control</h1>
+                    <p class="page-subtitle">Scan the span, then gauge one section at a time.</p>
+                  </div>
+                  <button class="system-toggle is-off" type="button" data-action="system-toggle">
+                    <span class="system-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2.8v7.8" /><path d="M7.2 5.5a8.4 8.4 0 1 0 9.6 0" /></svg></span>
+                    <span class="system-toggle-label">System OFF</span>
+                  </button>
+                </div>
+                <section class="status-card" aria-label="Section traveller status">
+                  <div class="status-item">
+                    <div class="status-icon status-icon-motor" aria-hidden="true">T</div>
+                    <div><p class="status-label">Traveller State</p><p id="section-state" class="status-value status-off">STOPPED</p></div>
+                  </div>
+                </section>
+                <section id="section-summary" class="section-card section-summary" hidden aria-label="Scan and section summary">
+                  <div><p class="status-label">Span length</p><p id="section-span" class="section-metric">0.00 m</p></div>
+                  <div><p class="status-label">Sections</p><p id="section-total" class="section-metric">—</p></div>
+                  <div><p id="section-next-label" class="status-label">Next distance</p><p id="section-next" class="section-metric section-metric-next">—</p></div>
+                </section>
+                <section id="section-scan-setup" class="section-card">
+                  <h2>Scan direction</h2>
+                  <div class="button-row direction-row">
+                    <button id="section-scan-lb" class="action-button direction-button" type="button" aria-pressed="false">← LB</button>
+                    <button id="section-scan-rb" class="action-button direction-button selected" type="button" aria-pressed="true">RB →</button>
+                  </div>
+                </section>
+                <section id="section-config" class="section-card section-configuration" hidden>
+                  <div class="section-count-row">
+                    <label for="section-count">Number of sections</label>
+                    <input id="section-count" type="number" min="6" max="60" step="1" inputmode="numeric" aria-describedby="section-count-helper section-fixed-model" />
+                  </div>
+                  <p id="section-count-helper" class="section-helper"></p>
+                  <p id="section-fixed-model" class="section-helper">Central fine-spacing threshold: 80%<br />Outer-to-centre width ratio: 1.8x</p>
+                </section>
+                <section id="section-visuals" class="section-visuals" hidden>
+                  <div class="section-card">
+                    <h2 id="section-overview-title">Section overview</h2>
+                    <div id="section-overview" class="section-overview" role="img" aria-label="Proportional section widths from left bank to right bank"></div>
+                    <div class="section-axis"><span>LB · 0 m</span><span id="section-span-end">0.00 m</span><span>RB</span></div>
+                  </div>
+                  <div class="section-card">
+                    <h2>Section detail</h2>
+                    <div id="section-details" class="section-details" tabindex="0" role="region" aria-label="Section numbers and widths, scroll horizontally"></div>
+                    <p id="section-return-note" class="section-helper"></p>
+                    <p class="section-helper">Scroll to inspect sections. Outlined section is next; faded sections are complete.</p>
+                  </div>
+                </section>
+                <p id="section-progress" class="section-progress" aria-live="polite">Select a scan direction, then press RUN.</p>
+                <button id="section-action" class="action-button action-on section-primary" type="button" disabled>
+                  <span id="section-action-icon" class="button-icon section-action-symbol" aria-hidden="true">▷</span><span id="section-action-label">RUN</span>
+                </button>
+                <p id="section-message" class="message" role="status" aria-live="polite"></p>
+                <button id="section-new-scan" class="section-text-button" type="button" hidden>New Scan</button>
+                <p class="message connection-message connection-note" aria-live="polite"></p>
+              </div>
+            </section>
           </div>
         </div>
 
@@ -259,10 +322,9 @@
           <button class="nav-button active" type="button" data-page="0" aria-current="true">
             <span class="nav-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" role="presentation">
-                <path d="M5.5 13.5a6.5 6.5 0 1 1 13 0" />
-                <path d="M12 7v4.5" />
-                <path d="m12 11.5 3 2" />
-                <circle cx="12" cy="14" r="1.3" />
+                <path d="M3 17a9 9 0 0 1 18 0" />
+                <path d="m12 17 4.5-6" />
+                <circle class="speed-nav-hub" cx="12" cy="17" r="1.6" />
               </svg>
             </span>
             <span>Speed Control</span>
@@ -277,10 +339,16 @@
             </span>
             <span>Distance Control</span>
           </button>
+          <div class="nav-divider" aria-hidden="true"></div>
+          <button class="nav-button" type="button" data-page="2" aria-current="false">
+            <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 28 24"><path d="M7.1 12h4.3M16.6 12h4.3M4.5 5v14M14 5v14M23.5 5v14" /><circle class="section-nav-dot" cx="4.5" cy="12" r="2.6" /><circle class="section-nav-dot" cx="14" cy="12" r="2.6" /><circle class="section-nav-dot" cx="23.5" cy="12" r="2.6" /></svg></span>
+            <span>Section Control</span>
+          </button>
         </nav>
       </div>
     </main>
 
-    <script src="/script.js?v=ui-refresh-15"></script>
+    <script src="/section-control.js?v=battery-monitor-1"></script>
+    <script src="/script.js?v=battery-monitor-1"></script>
   </body>
 </html>
