@@ -130,10 +130,51 @@ test('count edit made while offline is submitted after reconnect', async () => {
   ui.setOnline(false);
   nodes.get('section-count').value = '12';
   nodes.get('section-count').handlers.input();
+  nodes.get('section-count').handlers.change();
   await new Promise(resolve => setTimeout(resolve, 350));
   assert.equal(sent.length, 0);
   ui.update({ state: 'on', section: ready });
   await new Promise(resolve => setTimeout(resolve, 350));
   assert.deepEqual(sent, [{ cmd: 'section_configure', count: 12 }]);
   assert.equal(nodes.get('section-action').disabled, false);
+});
+
+test('typing a multi-digit count keeps the keyboard input enabled until editing finishes', async () => {
+  const sent = [];
+  const { ui, nodes, doc } = uiRig(async command => { sent.push(command); return {}; });
+  ui.update({ state: 'on', section: { ...ready, stage: 'CONFIGURE', count: 0, widthsCm: [] } });
+  const input = nodes.get('section-count');
+  doc.activeElement = input;
+  input.value = '2';
+  input.handlers.input();
+  await new Promise(resolve => setTimeout(resolve, 400));
+  assert.equal(sent.length, 0);
+  assert.equal(input.disabled, false);
+  ui.update({ state: 'on', section: { ...ready, stage: 'CONFIGURE', count: 0, widthsCm: [] } });
+  assert.equal(input.value, '2');
+  input.value = '20';
+  input.handlers.input();
+  await new Promise(resolve => setTimeout(resolve, 400));
+  assert.equal(sent.length, 0);
+  assert.equal(input.disabled, false);
+  doc.activeElement = null;
+  await input.handlers.change();
+  await input.handlers.blur();
+  assert.deepEqual(sent, [{ cmd: 'section_configure', count: 20 }]);
+});
+
+test('Enter confirms the full count once without starting a section move', async () => {
+  const sent = [];
+  const { ui, nodes, doc } = uiRig(async command => { sent.push(command); return {}; });
+  ui.update({ state: 'on', section: ready });
+  const input = nodes.get('section-count');
+  doc.activeElement = input;
+  input.value = '12';
+  input.handlers.input();
+  input.blur = () => { doc.activeElement = null; input.handlers.blur(); };
+  let prevented = false;
+  await input.handlers.keydown({ key: 'Enter', preventDefault() { prevented = true; } });
+  await new Promise(resolve => setTimeout(resolve, 0));
+  assert.equal(prevented, true);
+  assert.deepEqual(sent, [{ cmd: 'section_configure', count: 12 }]);
 });

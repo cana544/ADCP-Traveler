@@ -50,11 +50,19 @@
       this.el['new-scan'].addEventListener('click', () => this.command({ cmd: 'section_new_scan' }));
       this.el.count.addEventListener('input', () => {
         this.countDirty = true;
-        this.configurationQueued = true;
+        this.configurationQueued = false;
         this.error = '';
-        this.render();
         clearTimeout(this.timer);
-        this.timer = setTimeout(() => { this.timer = null; this.configure(); }, 300);
+        this.timer = null;
+        this.render();
+      });
+      this.el.count.addEventListener('change', () => this.finishCountEdit());
+      this.el.count.addEventListener('blur', () => this.finishCountEdit());
+      this.el.count.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter') return;
+        event.preventDefault();
+        this.el.count.blur();
+        return this.finishCountEdit();
       });
       this.render();
     }
@@ -99,6 +107,12 @@
       const value = this.el.count.value.trim();
       const count = value === '' ? NaN : Number(value);
       await this.command({ cmd: 'section_configure', count });
+    }
+
+    finishCountEdit() {
+      if (!this.countDirty || this.pending) return;
+      this.configurationQueued = true;
+      return this.configure();
     }
 
     async primaryAction() {
