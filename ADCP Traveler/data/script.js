@@ -1,3 +1,6 @@
+const headerBattery = document.querySelector('.header-battery');
+const batteryFill = document.querySelector('.battery-fill');
+const batteryReadout = document.querySelector('.battery-readout');
 const stateElements = Array.from(document.querySelectorAll('.motor-state-value'));
 const wifiSignalElements = Array.from(document.querySelectorAll('.wifi-signal-value'));
 const messageElement = document.getElementById('message');
@@ -268,6 +271,7 @@ function applyStateMessage(data, requestGeneration) {
     stateBootId = data.bootId;
     stateSequence = data.stateSequence;
   }
+  if (Object.prototype.hasOwnProperty.call(data, 'batteryValid')) updateBattery(data);
   sectionUI.update(data);
   if (typeof data.error === 'string') {
     messageElement.textContent = data.error;
@@ -279,6 +283,22 @@ function applyStateMessage(data, requestGeneration) {
   }
 
   updateDistanceState(data);
+}
+
+function updateBattery(data) {
+  if (!headerBattery || !batteryFill || !batteryReadout) return;
+  const valid = data.batteryValid === true &&
+    Number.isFinite(data.batteryVoltage) && data.batteryVoltage > 0 &&
+    Number.isFinite(data.batteryPercent);
+  const percent = valid ? Math.min(100, Math.max(0, data.batteryPercent)) : 0;
+  const height = 15 * percent / 100;
+  batteryFill.setAttribute('height', String(height));
+  batteryFill.setAttribute('y', String(21 - height));
+  headerBattery.dataset.level = valid ? (percent <= 20 ? 'low' : 'normal') : 'unavailable';
+  const text = valid ? `${data.batteryVoltage.toFixed(1)} V | ~${Math.round(percent)}%` : 'Unavailable';
+  batteryReadout.textContent = text;
+  headerBattery.setAttribute('aria-label', valid ? `Battery ${text}, estimated charge` : 'Battery unavailable');
+  headerBattery.setAttribute('title', valid ? `${text} (estimated charge)` : 'Battery unavailable');
 }
 
 function updateWifiSignal(data) {
@@ -322,7 +342,10 @@ async function refreshWifiSignal() {
 }
 
 function setConnectionState(isConnected) {
-  if (!isConnected) updateWifiSignal({ connected: false });
+  if (!isConnected) {
+    updateWifiSignal({ connected: false });
+    updateBattery({ batteryValid: false });
+  }
   else refreshWifiSignal();
 }
 

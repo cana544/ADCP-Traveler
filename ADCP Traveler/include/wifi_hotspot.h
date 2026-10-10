@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include <ESPAsyncWebServer.h>
 
+#include "battery_monitor.h"
 #include "distance_controller.h"
 #include "encoder.h"
 #include "motor_controller.h"
@@ -22,6 +23,7 @@ class WifiHotspot {
                             uint8_t* data, size_t len);
 
  private:
+  BatteryMonitor batteryMonitor_;
   MotorController motorController_;
   Encoder encoder_;
   DistanceController distanceController_;

@@ -173,8 +173,17 @@ rect {
   stroke-width: 1.4;
 }
 
-.battery-fill {
-  fill: #22d062;
+.battery-status { display: flex; align-items: center; gap: 4px; }
+.battery-readout { font-size: 0.65rem; white-space: nowrap; }
+.header-battery { color: #8591a4; }
+.battery-fill { fill: currentColor; }
+.header-battery[data-level="unavailable"] .battery-terminal { fill: #8591a4; }
+.header-battery[data-level="unavailable"] .battery-outline { stroke: #8591a4; }
+.header-battery[data-level="normal"] { color: #22d062; }
+.header-battery[data-level="low"] { color: #ff4d4f; }
+@media (max-width: 600px) {
+  .battery-status { position: relative; }
+  .battery-readout { position: absolute; right: 0; top: 100%; font-size: 0.48rem; }
 }
 
 .header-wifi-icon[data-connected="false"] {

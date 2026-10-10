@@ -155,6 +155,14 @@ bool WifiHotspot::zeroPosition() {
 String WifiHotspot::makeStateJson() const {
   ControlLock lock(controlMutex_);
   DynamicJsonDocument response(4096);
+  response["batteryValid"] = batteryMonitor_.valid();
+  if (batteryMonitor_.valid()) {
+    response["batteryVoltage"] = batteryMonitor_.voltage();
+    response["batteryPercent"] = batteryMonitor_.percent();
+  } else {
+    response["batteryVoltage"] = nullptr;
+    response["batteryPercent"] = nullptr;
+  }
   response["bootId"] = bootId_;
   response["stateSequence"] = ++stateSequence_;
   response["state"] = motorController_.isEnabled() ? "on" : "off";
@@ -522,6 +530,7 @@ void WifiHotspot::begin(uint8_t rpwmPin, uint8_t lpwmPin, uint8_t renPin,
 
   motorController_.begin(rpwmPin, lpwmPin, renPin, lenPin);
   encoder_.begin(Config::Pins::ENCODER);
+  batteryMonitor_.begin();
 
   WiFi.mode(WIFI_AP);
   const bool started =
@@ -620,6 +629,8 @@ void WifiHotspot::update() {
     sectionController_.update();
     updatePendingManualReversal();
   }
+
+  batteryMonitor_.update();
 
   const uint32_t nowMs = millis();
   if ((uint32_t)(nowMs - lastStateBroadcastMs_) >= 200UL) {

@@ -23,7 +23,7 @@ function app(fetchOverride) {
   const states = [element(), element()];
   const doc = { activeElement: null,
     getElementById(id) { if (!nodes.has(id)) nodes.set(id, element()); return nodes.get(id); },
-    querySelector() { return element(); },
+    querySelector(selector) { return doc.getElementById(selector); },
     querySelectorAll(selector) {
       if (selector === '.nav-button') return nav;
       if (selector === '.motor-state-value') return states;
@@ -37,7 +37,7 @@ function app(fetchOverride) {
     setTimeout, clearTimeout, setInterval() {}, URLSearchParams, AbortController,
   });
   vm.runInContext(fs.readFileSync(path.join(__dirname, '../../data/script.js'), 'utf8') +
-    '\nglobalThis.api = { applyStateMessage, showPage, handleSwipeStart, handleSwipeEnd, sendSectionCommand, openSocket() { ws.readyState = WebSocket.OPEN; } };', context);
+    '\nglobalThis.api = { applyStateMessage, setConnectionState, showPage, handleSwipeStart, handleSwipeEnd, sendSectionCommand, openSocket() { ws.readyState = WebSocket.OPEN; } };', context);
   return { api: context.api, nodes, pages };
 }
 function state(sequence, stage = 'READY_FOR_SECTION', bootId = 10) {
@@ -97,4 +97,20 @@ test('HTTP snapshot started before a first-seen reboot cannot replace that reboo
   // Generation zero request started before any firmware state had arrived.
   api.applyStateMessage(state(30, 'FINISHED', 10), 0);
   assert.equal(nodes.get('section-action-label').textContent, 'RUN');
+});
+
+test('status JSON updates battery and rejects stale readings; disconnect clears it', () => {
+  const { api, nodes } = app();
+  const reading = {...state(20), batteryValid:true, batteryVoltage:12.2, batteryPercent:73};
+  api.applyStateMessage(JSON.parse(JSON.stringify(reading)));
+  assert.equal(nodes.get('.battery-readout').textContent, '12.2 V | ~73%');
+  assert.equal(nodes.get('.header-battery').dataset.level, 'normal');
+  api.applyStateMessage({...reading, stateSequence:19, batteryPercent:10});
+  assert.equal(nodes.get('.header-battery').dataset.level, 'normal');
+  api.applyStateMessage({...reading, stateSequence:21, batteryValid:false, batteryVoltage:null, batteryPercent:null});
+  assert.equal(nodes.get('.battery-readout').textContent, 'Unavailable');
+  api.applyStateMessage({...reading, stateSequence:22, batteryPercent:20});
+  assert.equal(nodes.get('.header-battery').dataset.level, 'low');
+  api.setConnectionState(false);
+  assert.equal(nodes.get('.battery-readout').textContent, 'Unavailable');
 });

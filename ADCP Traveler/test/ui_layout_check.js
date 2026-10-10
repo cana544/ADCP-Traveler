@@ -64,7 +64,7 @@ if (!html.includes('src="/uoa-logo-white.png"')) {
   fail("Expected the header to render the inverted University of Auckland PNG logo asset.");
 }
 
-if (!html.includes('/style.css?v=ui-refresh-15') || !html.includes('/script.js?v=ui-refresh-15')) {
+if (!html.includes('/style.css?v=battery-monitor-1') || !html.includes('/script.js?v=battery-monitor-1')) {
   fail("Expected static asset URLs to use the latest cache-busting version.");
 }
 

@@ -15,7 +15,27 @@ constexpr uint8_t MOTOR_LPWM = 26;
 constexpr uint8_t MOTOR_REN = 27;
 constexpr uint8_t MOTOR_LEN = 14;
 constexpr uint8_t ENCODER = 21;
+constexpr uint8_t BATTERY_ADC = 34;
 }  // namespace Pins
+
+namespace Battery {
+constexpr float R1_OHMS = 47000.0f;
+constexpr float R2_OHMS = 10000.0f;
+constexpr float ADC_CORRECTION = 1.0f;
+constexpr uint32_t SAMPLE_PERIOD_MS = 1000;
+constexpr uint32_t SAMPLE_SPACING_MS = 2;
+constexpr uint8_t SAMPLE_COUNT = 16;
+constexpr float FILTER_ALPHA = 0.1f;  // About ten seconds of smoothing.
+// Reject disconnected/grounded inputs, saturation, and implausible 3S voltages.
+constexpr float MIN_VALID_VOLTAGE = 6.0f;
+constexpr float MAX_VALID_VOLTAGE = 13.2f;
+constexpr uint32_t MAX_ADC_MV = 3000;
+struct ChargePoint { float voltage; float percent; };
+// Ascending voltage; initial estimates pending physical discharge testing.
+constexpr ChargePoint CHARGE_TABLE[] = {
+    {10.50f, 0}, {11.10f, 10}, {11.40f, 20}, {11.70f, 40},
+    {12.00f, 60}, {12.30f, 80}, {12.60f, 100}};
+}  // namespace Battery
 
 namespace Encoder {
 constexpr float SLOTS_PER_REV = 50.0f;

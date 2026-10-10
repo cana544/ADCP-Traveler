@@ -10,7 +10,7 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <title>Gauge Glide</title>
-    <link rel="stylesheet" href="/style.css?v=section-control-5" />
+    <link rel="stylesheet" href="/style.css?v=battery-monitor-1" />
   </head>
   <body>
     <main class="app-shell">
@@ -34,12 +34,15 @@
                 <path class="wifi-disconnected-cross" d="M6 5 18 17 M18 5 6 17" />
               </svg>
             </div>
-            <div class="header-battery" role="img" aria-label="Battery Full (Fixed Display)">
+            <div class="battery-status">
+            <div class="header-battery" role="img" data-level="unavailable" aria-label="Battery unavailable">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <rect class="battery-terminal" x="9" y="1" width="6" height="2" rx="1" />
                 <rect class="battery-outline" x="5" y="4" width="14" height="19" rx="3" />
-                <rect class="battery-fill" x="7" y="6" width="10" height="15" rx="1" />
+                <rect class="battery-fill" x="7" y="21" width="10" height="0" rx="1" />
               </svg>
+            </div>
+            <span class="battery-readout">Unavailable</span>
             </div>
           </div>
         </header>
@@ -345,7 +348,7 @@
       </div>
     </main>
 
-    <script src="/section-control.js?v=section-control-5"></script>
-    <script src="/script.js?v=section-control-5"></script>
+    <script src="/section-control.js?v=battery-monitor-1"></script>
+    <script src="/script.js?v=battery-monitor-1"></script>
   </body>
 </html>
