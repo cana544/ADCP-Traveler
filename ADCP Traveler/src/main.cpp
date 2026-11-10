@@ -6,6 +6,7 @@
 WifiHotspot wifiHotspot;
 
 void setup() {
+  Serial.setTxBufferSize(4096); // best-effort diagnostic lines never wait for TX space
   Serial.begin(115200);
   delay(1000);
 

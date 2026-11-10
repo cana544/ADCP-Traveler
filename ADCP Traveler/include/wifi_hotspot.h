@@ -10,6 +10,8 @@
 #include "motor_controller.h"
 #include "section_controller.h"
 #include "control_lock.h"
+#include "imu_monitor.h"
+#include "control_diagnostics.h"
 
 class WifiHotspot {
  public:
@@ -24,6 +26,8 @@ class WifiHotspot {
 
  private:
   BatteryMonitor batteryMonitor_;
+  ImuMonitor imuMonitor_;
+  ControlDiagnostics diagnostics_;
   MotorController motorController_;
   Encoder encoder_;
   DistanceController distanceController_;

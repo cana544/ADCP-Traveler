@@ -172,6 +172,9 @@ String WifiHotspot::makeStateJson() const {
   response["distanceStatus"] = distanceController_.statusText();
   response["distanceActive"] = distanceController_.isActive();
   response["distanceCm"] = distanceController_.commandDistanceCm();
+  response["distancePhase"] = distanceController_.phaseText();
+  response["distanceFailure"] = distanceController_.failureText();
+  response["imuHealthy"] = imuMonitor_.snapshot().healthy(micros());
   JsonObject section = response.createNestedObject("section");
   section["stage"] = sectionController_.stageText();
   section["state"] = sectionController_.stateText();
@@ -531,6 +534,7 @@ void WifiHotspot::begin(uint8_t rpwmPin, uint8_t lpwmPin, uint8_t renPin,
   motorController_.begin(rpwmPin, lpwmPin, renPin, lenPin);
   encoder_.begin(Config::Pins::ENCODER);
   batteryMonitor_.begin();
+  imuMonitor_.begin(); // bounded boot initialization, before accepting motor commands
 
   WiFi.mode(WIFI_AP);
   const bool started =
@@ -623,13 +627,16 @@ void WifiHotspot::update() {
   const uint32_t nowUs = micros();
   if ((uint32_t)(nowUs - lastControlUs_) >=
       Config::Control::CONTROL_PERIOD_US) {
-    lastControlUs_ += Config::Control::CONTROL_PERIOD_US;
+    lastControlUs_ = nowUs; // no control catch-up bursts after a delayed loop
     encoder_.update();
     distanceController_.update();
     sectionController_.update();
     updatePendingManualReversal();
   }
 
+  if (diagnostics_.poll(distanceController_, imuMonitor_)) stopDistanceMove();
+  imuMonitor_.update();
+  diagnostics_.emit(bootId_, distanceController_, encoder_, motorController_, sectionController_, imuMonitor_);
   batteryMonitor_.update();
 
   const uint32_t nowMs = millis();
