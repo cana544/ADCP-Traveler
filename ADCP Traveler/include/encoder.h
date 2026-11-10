@@ -17,6 +17,7 @@ class Encoder {
   float velocityCmS() const;
   bool isStopped(uint32_t timeoutUs = 0) const;
   int32_t pulseCount() const;
+  uint32_t pulseAgeUs() const;
 
  private:
   static Encoder* activeInstance_;

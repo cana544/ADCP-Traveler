@@ -124,6 +124,7 @@ void MotorController::applySpeed() {
 }
 
 void MotorController::logState(const char* source) const {
+  if (!loggingEnabled_) return;
   const char* direction = "STOP";
   if (currentSpeed_ > 0) {
     direction = "RB";

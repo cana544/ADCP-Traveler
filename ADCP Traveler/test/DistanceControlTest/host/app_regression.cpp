@@ -50,7 +50,10 @@ int main() {
     const uint32_t end = static_cast<uint32_t>((reference.duration() + 2.5f) * 1e6f);
     for (uint32_t t = 1000; t <= end; t += 1000) {
       fakeUs = t;
-      float x = fabsf(reference.sample((t - 1000)*1e-6f).positionCm);
+      // Half-pulse initial sensor phase gives the nearest reachable endpoint
+      // in the new symmetric band, including slightly beyond nominal travel.
+      float x = fabsf(reference.sample((t - 1000)*1e-6f).positionCm) +
+          .5f * Config::Encoder::DISTANCE_PER_PULSE_CM;
       if (x - lastPosition >= Config::Encoder::DISTANCE_PER_PULSE_CM) {
         e.onPulse(); ve.onPulse(); lastPosition += Config::Encoder::DISTANCE_PER_PULSE_CM;
       }
@@ -75,10 +78,10 @@ int main() {
   fakeUs += 200000; e.onPulse(); e.update(); c.update();
   fakeUs += 200000; e.onPulse(); e.update(); c.update();
   fakeUs += 2100000; e.update(); c.update();
-  check(m.currentSpeed() == 0, "profile end must stop PWM even when endpoint is missed");
+  check(m.currentSpeed() == 0, "a delayed active control loop must stop PWM");
   fakeUs += 1000000; c.update();
   check(!c.isActive() && std::string(c.statusText()) == "ERROR",
-        "missed endpoint must terminate as an app error");
+        "a control-loop gap must terminate as an app error");
   c.beginMove(10, -1);
   fakeUs += 10100000; c.update();
   check(!c.isActive() && m.currentSpeed() == 0,

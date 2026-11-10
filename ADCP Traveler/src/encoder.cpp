@@ -2,6 +2,13 @@
 
 #include "config.h"
 
+namespace {
+uint32_t distanceStopInterval(uint32_t period) {
+  // Bound multiplication before doubling; a stale period cannot extend this forever.
+  return max(Config::Encoder::DISTANCE_STOP_TIMEOUT_US, min(period, uint32_t(1000000)) * 2);
+}
+}
+
 Encoder* Encoder::activeInstance_ = nullptr;
 
 Encoder::Encoder()
@@ -87,7 +94,7 @@ void Encoder::update() {
   const uint32_t nowUs = micros();
   const bool stopped =
       lastPulseUs == 0 || (nowUs - lastPulseUs) >=
-          (distanceMode_ ? Config::Encoder::DISTANCE_STOP_TIMEOUT_US
+          (distanceMode_ ? distanceStopInterval(periodUs)
                          : Config::Encoder::STOP_TIMEOUT_US);
 
   if (stopped) {
@@ -179,14 +186,23 @@ float Encoder::velocityCmS() const { return filteredVelocityCmS_; }
 
 bool Encoder::isStopped(uint32_t timeoutUs) const {
   uint32_t lastPulseUs;
+  uint32_t periodUs;
   noInterrupts();
   lastPulseUs = lastPulseUs_;
+  periodUs = latestPeriodUs_;
   interrupts();
   if (timeoutUs == 0) {
-    timeoutUs = distanceMode_ ? Config::Encoder::DISTANCE_STOP_TIMEOUT_US
+    timeoutUs = distanceMode_ ? distanceStopInterval(periodUs)
                              : Config::Encoder::STOP_TIMEOUT_US;
   }
   return lastPulseUs == 0 || (micros() - lastPulseUs) >= timeoutUs;
+}
+
+uint32_t Encoder::pulseAgeUs() const {
+  noInterrupts();
+  const uint32_t last = lastPulseUs_;
+  interrupts();
+  return last == 0 ? UINT32_MAX : micros() - last;
 }
 
 int32_t Encoder::pulseCount() const {

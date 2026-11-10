@@ -30,7 +30,8 @@ struct Rig {
   void finishMove() {
     // Feed the real encoder the distance still commanded by the real controller.
     const float remaining = distance.commandDistanceCm();
-    const int count = static_cast<int>(std::round(remaining / Config::Encoder::DISTANCE_PER_PULSE_CM));
+    const int count = max(0, static_cast<int>(std::ceil((remaining - Config::Control::POSITION_TOLERANCE_CM -
+        Config::Control::POSITION_EPSILON_CM) / Config::Encoder::DISTANCE_PER_PULSE_CM)));
     for (int i = 0; i < count; ++i) {
       testTimeUs += 50000; testPulse(); encoder.update(); distance.update(); sections.update();
     }
@@ -193,4 +194,19 @@ void sixtySections() {
   std::puts("PASS: 60 individually stopped sections return to origin without cumulative drift");
 }
 
-int main() { planner(); scanAndRamp(); returnAndResume(); failureAndInvalidation(); powerOffAndLongScan(); sixtySections(); }
+void passedEndpoint() {
+  for (int direction : {-1,1}) for (int extra : {0,1}) {
+    Rig rig; rig.scan(direction); assert(rig.sections.configure(6)); assert(rig.sections.go());
+    const float distance = rig.distance.commandDistanceCm();
+    rig.sections.stop();
+    rig.pulses(static_cast<int>(distance / Config::Encoder::DISTANCE_PER_PULSE_CM)+1+extra);
+    rig.tick(600000);
+    assert(rig.sections.completedCount()==0); // STOP never advances a section.
+    assert(rig.sections.go()==(extra==0));
+    assert(rig.sections.completedCount()==(extra==0 ? 1 : 0));
+    assert(!rig.distance.isActive() && rig.motor.currentSpeed()==0);
+  }
+  std::puts("PASS: stationary section crossing inside +/-0.5 cm is accepted; larger crossing is rejected");
+}
+
+int main() { passedEndpoint(); planner(); scanAndRamp(); returnAndResume(); failureAndInvalidation(); powerOffAndLongScan(); sixtySections(); }

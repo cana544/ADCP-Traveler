@@ -104,10 +104,10 @@ bool SectionController::go() {
                                           : "Run a scan and enter a valid number of sections first.");
   if (!stationary()) return reject("Wait for the traveller to stop.");
   const float remaining = -scanDirection_ * (targetCm() - encoder_.positionCm());
-  if (remaining < -Config::Control::POSITION_TOLERANCE_CM)
-    return reject("Traveller passed the section endpoint. Start a new scan.");
+  if (remaining < -Config::Control::POSITION_TOLERANCE_CM - Config::Control::POSITION_EPSILON_CM)
+    return reject("Traveller passed the section endpoint tolerance. Start a new scan.");
   executionStarted_ = true;
-  if (remaining <= Config::Control::POSITION_TOLERANCE_CM) {
+  if (std::fabs(remaining) <= Config::Control::POSITION_TOLERANCE_CM + Config::Control::POSITION_EPSILON_CM) {
     // STOP itself never completes a section. A later GO confirms a stationary endpoint.
     completeSection();
     return true;

@@ -60,24 +60,42 @@ constexpr uint32_t SCAN_RAMP_DURATION_US = 4000000UL;
 }  // namespace Section
 
 namespace Control {
-constexpr float POSITION_KP = 3.0f;
 constexpr float VELOCITY_KP = 13.0f;
-constexpr float VELOCITY_KI = 2.0f;
-constexpr float VELOCITY_KD = 0.0f;
+constexpr float VELOCITY_KI = 4.0f;
 constexpr float SUPPLY_VOLTAGE = 12.0f;
-constexpr float FEEDFORWARD_GAIN_V_PER_M_S = 23.0f;
-constexpr float FRICTION_COMPENSATION_V = 1.8f;
+constexpr float FEEDFORWARD_GAIN_V_PER_M_S = 17.5f;
+constexpr float FRICTION_COMPENSATION_V = 2.3f;
 constexpr float VOLTAGE_SLEW_V_S = 25.0f;
 constexpr float STARTUP_RAMP_V_S = 1.0f;
 constexpr float STARTUP_MAX_VOLTAGE = 8.0f;
 constexpr uint32_t STARTUP_TIMEOUT_US = 10000000UL;
 constexpr uint8_t STARTUP_CONFIRM_PULSES = 2;
-constexpr float MOVE_TIMEOUT_MARGIN_S = 5.0f;
 constexpr uint32_t SETTLING_TIME_US = 1000000UL;
-constexpr float POSITION_TOLERANCE_CM = Encoder::DISTANCE_PER_PULSE_CM;
-constexpr float VELOCITY_TOLERANCE_CM_S = 1.0f;
-constexpr uint8_t COMPLETE_CONFIRM_CYCLES = 5;
+// Symmetric stationary endpoint band; slight target crossing is accepted.
+constexpr float POSITION_TOLERANCE_CM = 0.5f;
 constexpr uint32_t CONTROL_PERIOD_US = 50000UL;
+// Conservative commissioning defaults; physical stopping capability is unverified.
+constexpr float BRAKING_CM_S2 = 5.0f;
+constexpr float REACTION_TIME_S = 0.25f;
+constexpr float STOP_MARGIN_CM = 0.3f;
+constexpr float APPROACH_DISTANCE_CM = 8.0f;
+constexpr float APPROACH_SPEED_CM_S = 3.0f;
+constexpr float INTEGRAL_LIMIT_V = 4.0f;
+constexpr float LOAD_BIAS_LIMIT_V = 3.0f;
+constexpr float LOAD_LEARN_V_S = 0.15f;
+constexpr float START_LEARN_ALPHA = 0.15f;
+constexpr float START_LEARN_LIMIT_V = 6.0f;
+constexpr uint32_t STABLE_LEARN_US = 1000000UL;
+constexpr uint32_t NO_PROGRESS_US = 2000000UL;
+constexpr uint32_t RECOVERY_PAUSE_US = 700000UL;
+constexpr uint32_t RECOVERY_TIMEOUT_US = 12000000UL;
+constexpr uint8_t MAX_RECOVERIES = 2;
+constexpr float RECOVERY_MAX_VOLTAGE = 6.0f;
+constexpr float RECOVERY_RAMP_V_S = 0.5f;
+constexpr float TOTAL_TIMEOUT_BASE_S = 40.0f;
+constexpr float TOTAL_TIMEOUT_MAX_S = 600.0f;
+constexpr float POSITION_EPSILON_CM = 0.0001f;
+constexpr uint32_t MAX_CONTROL_GAP_US = 250000UL;
 }  // namespace Control
 
 namespace Files {

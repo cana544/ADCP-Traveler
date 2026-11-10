@@ -31,8 +31,12 @@ template <typename T> T constrain(T x, T lo, T hi) {
 }
 struct FakeSerial {
   std::string output;
-  int available() { return 0; }
-  char read() { return 0; }
+  std::string input;
+  int room = 4096;
+  int available() { return static_cast<int>(input.size()); }
+  char read() { char c = input.front(); input.erase(0, 1); return c; }
+  int availableForWrite() { return room; }
+  size_t write(const uint8_t* data, size_t size) { output.append(reinterpret_cast<const char*>(data), size); return size; }
   void begin(int) {}
   template <typename... Args> void printf(const char* format, Args... args) {
     char buffer[512];

@@ -16,6 +16,7 @@ class MotorController {
   bool isEnabled() const;
   int currentSpeed() const;
   int direction() const;
+  void setLoggingEnabled(bool enabled) { loggingEnabled_ = enabled; }
 
  private:
   static constexpr int MAX_DUTY = 255;
@@ -30,6 +31,7 @@ class MotorController {
   uint8_t resolutionBits_;
   bool enabled_;
   int currentSpeed_;
+  bool loggingEnabled_ = true;
 
   void attachPwmPin(uint8_t pin, uint8_t channel);
   void writePwmDuty(uint8_t pin, uint8_t channel, int duty);
