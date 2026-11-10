@@ -6,3 +6,14 @@
 __pycache__/
 .venv/
 
+# Generated host executables and LoadedControl report/build output.
+*.exe
+/test/LoadedControl/results/**/*.bin
+/test/LoadedControl/results/**/index.html
+/test/LoadedControl/results/**/plots/*.png
+
+# Keep the compact final comparison figures; regenerate per-trial plots locally.
+!/test/LoadedControl/results/retune-2026-11-10/plots/comparison.png
+!/test/LoadedControl/results/retune-2026-11-10/plots/50cm-RB.png
+!/test/LoadedControl/results/retune-2026-11-10/plots/50cm-LB.png
+
