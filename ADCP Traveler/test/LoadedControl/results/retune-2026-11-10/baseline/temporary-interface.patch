@@ -1,0 +1,68 @@
+--- src\control_diagnostics.cpp
++++ temporary/src\control_diagnostics.cpp
+@@ -8,10 +8,22 @@
+ }
+ 
+ bool ControlDiagnostics::poll(DistanceController& controller, ImuMonitor& imu) {
++  if (controller.isActive() && uint32_t(micros() - testHeartbeatUs_) >= 2000000UL) {
++    acknowledge("GG_ACK,TEST_HEARTBEAT_STOP\n"); return true;
++  }
+   for (int budget = 0; budget < 32 && Serial.available() > 0; ++budget) {
+     const auto command = parser_.feed(static_cast<char>(Serial.read()));
+     switch (command) {
+       case DiagnosticCommands::NONE: break;
++      case DiagnosticCommands::TEST_PING: testHeartbeatUs_ = micros(); break;
++      case DiagnosticCommands::TEST_MOVE:
++        if (controller.isActive()) acknowledge("GG_ACK,BUSY\n");
++        else {
++          controller.beginMove(parser_.testDistance, parser_.testDirection);
++          if (controller.isActive()) { testHeartbeatUs_ = micros(); acknowledge("GG_ACK,TEST_MOVE\n"); }
++          else acknowledge("GG_ACK,TEST_MOVE_REJECTED\n");
++        }
++        break;
+       case DiagnosticCommands::STOP: acknowledge("GG_ACK,STOP\n"); return true;
+       case DiagnosticCommands::LOG_ON: enabled_ = true; acknowledge("GG_ACK,LOG_ON\n"); break;
+       case DiagnosticCommands::LOG_OFF: enabled_ = false; acknowledge("GG_ACK,LOG_OFF\n"); break;
+--- include\control_diagnostics.h
++++ temporary/include\control_diagnostics.h
+@@ -12,6 +12,7 @@
+             const MotorController&, const SectionController&, const ImuMonitor&);
+  private:
+   DiagnosticCommands parser_;
++  uint32_t testHeartbeatUs_ = 0;
+   bool enabled_ = false;
+   uint32_t lastSampleUs_ = 0, drops_ = 0, sequence_ = 0;
+   void acknowledge(const char* message);
+--- include\diagnostic_commands.h
++++ temporary/include\diagnostic_commands.h
+@@ -1,10 +1,14 @@
+ #pragma once
+ #include <cstddef>
+ #include <cstring>
++#include <cstdio>
++#include <cmath>
+ class DiagnosticCommands {
+  public:
+   enum Command { NONE, INVALID, STOP, LOG_ON, LOG_OFF, ADAPT_ON, ADAPT_OFF, ADAPT_RESET, IMU_CHECK,
+-                 ADAPT_START_ON, ADAPT_START_OFF, ADAPT_LOAD_ON, ADAPT_LOAD_OFF };
++                 ADAPT_START_ON, ADAPT_START_OFF, ADAPT_LOAD_ON, ADAPT_LOAD_OFF, TEST_MOVE, TEST_PING };
++  float testDistance = 0;
++  int testDirection = 0;
+   Command feed(char c) {
+     if (c == '\r') return NONE;
+     if (c != '\n') {
+@@ -15,7 +19,13 @@
+     line_[size_] = 0;
+     Command command = INVALID;
+     if (!overflow_) {
+-      if (!std::strcmp(line_, "STOP")) command = STOP;
++      float distance = 0; int direction = 0; char extra = 0;
++      if (!std::strcmp(line_, "TEST PING")) command = TEST_PING;
++      else if (std::sscanf(line_, "TEST MOVE %f %d %c", &distance, &direction, &extra) == 2 &&
++               std::isfinite(distance) && distance > 0 && distance <= 500 && (direction == 1 || direction == -1)) {
++        testDistance = distance; testDirection = direction; command = TEST_MOVE;
++      }
++      else if (!std::strcmp(line_, "STOP")) command = STOP;
+       else if (!std::strcmp(line_, "LOG ON")) command = LOG_ON;
+       else if (!std::strcmp(line_, "LOG OFF")) command = LOG_OFF;
+       else if (!std::strcmp(line_, "ADAPT ON")) command = ADAPT_ON;

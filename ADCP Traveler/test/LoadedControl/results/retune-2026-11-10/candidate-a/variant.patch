@@ -1,0 +1,22 @@
+--- baseline/include/config.h
++++ candidate-a/include/config.h
+@@ -79,7 +79,7 @@
+ constexpr float REACTION_TIME_S = 0.25f;
+ constexpr float STOP_MARGIN_CM = 0.3f;
+ constexpr float APPROACH_DISTANCE_CM = 8.0f;
+-constexpr float APPROACH_SPEED_CM_S = 2.0f;
++constexpr float APPROACH_SPEED_CM_S = 3.0f;
+ constexpr float INTEGRAL_LIMIT_V = 4.0f;
+ constexpr float LOAD_BIAS_LIMIT_V = 3.0f;
+ constexpr float LOAD_LEARN_V_S = 0.15f;
+--- baseline/src/distance_controller.cpp
++++ candidate-a/src/distance_controller.cpp
+@@ -109,7 +109,7 @@
+     }
+     return;
+   }
+-  const float room = max(0.0f, remaining - Config::Control::POSITION_TOLERANCE_CM * .5f -
++  const float room = max(0.0f, remaining + Config::Control::POSITION_TOLERANCE_CM -
+       Config::Control::STOP_MARGIN_CM - speed * Config::Control::REACTION_TIME_S);
+   const float ceiling = sqrtf(2 * Config::Control::BRAKING_CM_S2 * room);
+   brakingLimited_ = speed > ceiling;

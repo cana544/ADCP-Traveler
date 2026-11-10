@@ -1,0 +1,13 @@
+{
+  "hardware_trials": 65,
+  "position_trials": 60,
+  "stop_trials": 5,
+  "all_screening_passed": true,
+  "all_targets_fixed": true,
+  "no_commanded_reversals": true,
+  "metrics_agree_with_raw_logs": true,
+  "malformed_records": 0,
+  "sequence_gaps": 0,
+  "reported_drops": 0,
+  "matrix_boots": 1
+}

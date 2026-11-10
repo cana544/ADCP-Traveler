@@ -1,0 +1,14 @@
+{
+  "hardware_attempts": 93,
+  "locked_validation_moves": 56,
+  "validation_recoveries": 0,
+  "max_validation_interior_pulse_age_s": 0.679744,
+  "stop_tests": 5,
+  "all_endpoints_or_intentional_stops_passed": true,
+  "metrics_match_raw": true,
+  "all_targets_fixed": true,
+  "no_commanded_reversals": true,
+  "malformed_records": 0,
+  "sequence_gaps": 0,
+  "reported_drops": 0
+}

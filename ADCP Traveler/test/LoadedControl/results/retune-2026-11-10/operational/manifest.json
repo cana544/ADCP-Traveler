@@ -1,0 +1,59 @@
+{
+  "parameters": {
+    "kp": 13,
+    "ki": 4,
+    "feedforward_v_per_m_s": 17.5,
+    "friction_v": 2.3,
+    "approach_cm_s": 3
+  },
+  "encoder_band_cm": [
+    -0.5,
+    0.5
+  ],
+  "app_unchanged": true,
+  "production_changes": [
+    "src\\distance_controller.cpp",
+    "include\\config.h"
+  ],
+  "firmware_sha256": "ef075a8685b3a64ba2d588bda1bcdd72c34cc6a6007c010893d8b9d6ba193694",
+  "source_sha256": {
+    "src\\battery_monitor.cpp": "2137e4574e7f0ff1dbe7871e9532a77778f4c47d02ad68ccff270223f15ee512",
+    "src\\control_diagnostics.cpp": "a7f4c8b91fb4f798161ba8c7266f40473c16832fe05d28318a30078ccdcb822f",
+    "src\\distance_controller.cpp": "71d150de2d70dffa6a6f0a9a93586d52e4ffde7b11eba023be7bf1577f7959c6",
+    "src\\encoder.cpp": "7f7145494d7277396d68edbfd6127fe4083ddbdc965c58aaf3b290eba169135d",
+    "src\\imu_calibration.cpp": "b675709d07aafab82ca0d3a8a4eb9bcbb246eb5f492823b1b6e72344d5bf09eb",
+    "src\\imu_monitor.cpp": "2a3dee8dcd56fc09529cf2be04d6dead237957b69afa38fdaa0fb131fc283ca8",
+    "src\\main.cpp": "a06b5e5b355ddfc5bd71769b2e448c087662521276956e7db3d808e1aab60416",
+    "src\\motion_profile.cpp": "5262b64bbd104c4f03a9a5651437b2333a12ff5c55268afe84d152bd7059257a",
+    "src\\motor_controller.cpp": "7c364a739cac10db1613e61489c6312384130023e811b137d040860e839a0a03",
+    "src\\section_controller.cpp": "6a11f4f5941ca16ea0e5ef559cbd66a8ec85292529e2efcc9a60dd42a12107f8",
+    "src\\section_plan.cpp": "d853026a9ef64387786d83a217a6fde26dcaea5b4e10decd46fbbd230a5f46f6",
+    "src\\wifi_hotspot.cpp": "c6e9f18400916cb61d2728d5c1df635827cf387449be0a75027a947c9e66e325",
+    "src\\wifi_signal_reporter.cpp": "1b111973cf0ef997cac76a0e3d28781be1011a103a50812125992afc4c2f1a68",
+    "include\\battery_monitor.h": "e2ee8ee77481c667aa66dccd50c051a12d228175503b5ca629c07295bb49358a",
+    "include\\bno_shtp_guard.h": "aa855f04a4b164a23269fd7d7895026383784c92a9e3136b09e4507f1f470980",
+    "include\\bno_uart_transport.h": "efca7e660579338a89c68d3aab1ed24d477bfafd52183cebcdb4b7546aeff5ee",
+    "include\\config.h": "4f3fd687d49464db774c5d8dfdf2419c0fe40b2b8aeb95513e82816d23666294",
+    "include\\control_diagnostics.h": "c028b6e281b3476aae507c5e419d826454dd2b2f50d3521e94d67d953e42a95a",
+    "include\\control_lock.h": "63fa17b0141e9c5207f23ca7a7ab548ef103ca78f24ad6ee5dcbeb5616b69add",
+    "include\\diagnostic_commands.h": "648fe049fc88064b52b049ec8035d154364da6c871115af47e764f30b8146eb5",
+    "include\\distance_controller.h": "8c4947e7117f9deddcefed2c2fd307cd7f47145611ff9312da180a8657e12dc2",
+    "include\\encoder.h": "60038c723cbb21eb38076c5f40b36d854d5e529c2f73a4059fa1d574275d6646",
+    "include\\imu_calibration.h": "5480f37f53a8d603a86adef3631409a829df182c563e462d9d2a0e8529daf23b",
+    "include\\imu_data.h": "dcbd042f4f788e84be2b028d93f8e25464af55b0de92b2d3a76ba1ceb2fd10a9",
+    "include\\imu_monitor.h": "3357a2048399b53458d6af51bf524a64feac853b094ace889b13c45a55f4855c",
+    "include\\motion_profile.h": "1703ef117a4b9ff7b10acfac6b4205521a20cc60f0166c90b319f0ddc9577b7c",
+    "include\\motor_controller.h": "5c94adaf3a0c2c6d8bce9a9b42972e1269673cf5830a40e8d2a97dabe9efa081",
+    "include\\README": "dc6d9be88119a80edf773eb5a659f4470caf81ed5e95dbfd0cd3c7a9686ccd8c",
+    "include\\section_controller.h": "788ad5dd70599349fada5e5ee022ec349678602c45dbb7404fe42ca669c1e364",
+    "include\\section_plan.h": "c0589533ba4e5c27b4b020dc82353d7bba67ce28e8c01dcd0a0e486a0dcbc579",
+    "include\\wifi_hotspot.h": "23cbf03463c0f2b9ef45fc904afd86781eede074e946bf9d6da25d44972ba7c4",
+    "include\\wifi_signal_reporter.h": "0e9a750bd7b9d0280b27f77cbb7559a89248b746076c19766ba9476b60b8c98a",
+    "data\\index.html": "79e3448d33a91273320f313f79ea1ad99dc73377e47ebdd16e04748e50135ce0",
+    "data\\script.js": "b99b69b500d117e16adf1a6c4f365b9d515393a2bcd8a1e29a21b112971d38fd",
+    "data\\section-control.js": "1df85db0c30bb9e0632815eab230ea1a8d281259ec0230c63494e0084224ab52",
+    "data\\style.css": "232f1c4ae9b033aa9eb71631be50b2e91c39f76189c6b74f44d768a50b27f8b4",
+    "data\\uoa-logo-white.png": "9fc85a145e1bb353ea4e058728634fde4a04f0387f860443b56358d094e58c4c",
+    "platformio.ini": "bb3b40f82b73a16b6a4ce5474ade3adfbae99a9ac22134ba50dc37dbdeb56a38"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "production_restored": true,
+  "production_source_unchanged": true,
+  "production_sha256": "f4ffd63ca593aa83a148870a0f3c91049f04773b375c5b9912aaecd2b246120a",
+  "idle_samples": 26,
+  "all_idle_pwm_zero": true,
+  "idle_position_constant": true,
+  "test_ping_rejected": true,
+  "imu_healthy": false
+}

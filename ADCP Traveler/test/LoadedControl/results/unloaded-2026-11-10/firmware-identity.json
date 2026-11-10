@@ -1,0 +1,6 @@
+{
+  "production_sha256": "f4ffd63ca593aa83a148870a0f3c91049f04773b375c5b9912aaecd2b246120a",
+  "temporary_sha256": "af720ffc2a4d6096b965a59171e9a5a63774d620d8bbd2601f6b44614fceafb1",
+  "production_image": "../unloaded-2026-11-09/production-firmware.bin",
+  "resumed_authorization": "2026-11-10; user authorized upload and full tests; USB only"
+}

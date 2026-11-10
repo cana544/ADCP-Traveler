@@ -1,0 +1,15 @@
+{
+  "endpoint_band_cm": [
+    -0.5,
+    0.5
+  ],
+  "upload_verified": true,
+  "app_unchanged": true,
+  "http_and_websocket_started": true,
+  "idle_samples": 20,
+  "all_pwm_zero": true,
+  "position_constant": true,
+  "test_commands_absent": true,
+  "imu_healthy": false,
+  "powered_motion_test_performed": false
+}

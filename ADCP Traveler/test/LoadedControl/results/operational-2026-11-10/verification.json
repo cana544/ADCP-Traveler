@@ -1,0 +1,14 @@
+{
+  "firmware_upload_verified": true,
+  "app_upload_verified": true,
+  "http_server_started": true,
+  "websocket_server_started": true,
+  "idle_samples": 25,
+  "all_pwm_zero": true,
+  "position_constant": true,
+  "temporary_test_commands_absent": true,
+  "imu_healthy": false,
+  "adaptation_enabled_at_boot": true,
+  "wifi_connection_used": false,
+  "motor_moves_commanded": false
+}

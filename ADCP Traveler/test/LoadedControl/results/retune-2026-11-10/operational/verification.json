@@ -1,0 +1,14 @@
+{
+  "operational_uploaded": true,
+  "upload_flash_hash_verified": true,
+  "firmware_sha256": "ef075a8685b3a64ba2d588bda1bcdd72c34cc6a6007c010893d8b9d6ba193694",
+  "http_websocket_started": true,
+  "idle_samples": 20,
+  "all_pwm_zero": true,
+  "position_constant": true,
+  "test_commands_removed": true,
+  "app_unchanged": true,
+  "adaptation_default_on": true,
+  "imu_healthy": false,
+  "wifi_connection_used": false
+}

@@ -1,0 +1,167 @@
+[
+  {
+    "kp": 6,
+    "complete": 18,
+    "recoveries": 2,
+    "worst_peak": 26.2067,
+    "constant_mean_time": 8.6875,
+    "constant_mean_tracking_error": 2.434753125,
+    "steps": [
+      [
+        "step",
+        "2.5",
+        "100",
+        "COMPLETE",
+        "1",
+        "0.0973511",
+        "25",
+        "23.5626",
+        "1.32347"
+      ],
+      [
+        "step",
+        "3.3",
+        "100",
+        "COMPLETE",
+        "1",
+        "0.0973511",
+        "27.5",
+        "23.5626",
+        "1.32347"
+      ]
+    ],
+    "failures": []
+  },
+  {
+    "kp": 8,
+    "complete": 18,
+    "recoveries": 2,
+    "worst_peak": 25.8202,
+    "constant_mean_time": 8.821875,
+    "constant_mean_tracking_error": 2.267699375,
+    "steps": [
+      [
+        "step",
+        "2.5",
+        "100",
+        "COMPLETE",
+        "1",
+        "0.0973511",
+        "24.75",
+        "23.3076",
+        "1.26125"
+      ],
+      [
+        "step",
+        "3.3",
+        "100",
+        "COMPLETE",
+        "1",
+        "0.0973511",
+        "27.3",
+        "23.3076",
+        "1.26125"
+      ]
+    ],
+    "failures": []
+  },
+  {
+    "kp": 10,
+    "complete": 18,
+    "recoveries": 2,
+    "worst_peak": 25.221,
+    "constant_mean_time": 9.046875,
+    "constant_mean_tracking_error": 2.106558125,
+    "steps": [
+      [
+        "step",
+        "2.5",
+        "100",
+        "COMPLETE",
+        "1",
+        "0.0973511",
+        "24.85",
+        "23.1474",
+        "1.16071"
+      ],
+      [
+        "step",
+        "3.3",
+        "100",
+        "COMPLETE",
+        "1",
+        "0.0973511",
+        "27.25",
+        "23.1474",
+        "1.16071"
+      ]
+    ],
+    "failures": []
+  },
+  {
+    "kp": 13,
+    "complete": 18,
+    "recoveries": 2,
+    "worst_peak": 24.9339,
+    "constant_mean_time": 9.028125,
+    "constant_mean_tracking_error": 1.936928125,
+    "steps": [
+      [
+        "step",
+        "2.5",
+        "100",
+        "COMPLETE",
+        "1",
+        "0.0973511",
+        "24.85",
+        "23.113",
+        "1.09573"
+      ],
+      [
+        "step",
+        "3.3",
+        "100",
+        "COMPLETE",
+        "1",
+        "0.0973511",
+        "27.25",
+        "23.113",
+        "1.09573"
+      ]
+    ],
+    "failures": []
+  },
+  {
+    "kp": 16,
+    "complete": 18,
+    "recoveries": 2,
+    "worst_peak": 24.3296,
+    "constant_mean_time": 8.959375,
+    "constant_mean_tracking_error": 1.7579268749999999,
+    "steps": [
+      [
+        "step",
+        "2.5",
+        "100",
+        "COMPLETE",
+        "1",
+        "0.0973511",
+        "25",
+        "22.9571",
+        "1.02327"
+      ],
+      [
+        "step",
+        "3.3",
+        "100",
+        "COMPLETE",
+        "1",
+        "0.0973511",
+        "27.4",
+        "22.9571",
+        "1.02327"
+      ]
+    ],
+    "failures": []
+  }
+]

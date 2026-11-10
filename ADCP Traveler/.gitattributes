@@ -1,0 +1,3 @@
+# Preserve original line endings in recorded bench data.
+test/LoadedControl/results/**/*.log -text
+test/LoadedControl/results/**/*.csv -text

@@ -1,0 +1,50 @@
+[
+  {
+    "ff": "old",
+    "ki": 2,
+    "complete": 16,
+    "no_recovery": 4,
+    "total_recoveries": 12,
+    "failures": []
+  },
+  {
+    "ff": "old",
+    "ki": 8,
+    "complete": 16,
+    "no_recovery": 0,
+    "total_recoveries": 16,
+    "failures": []
+  },
+  {
+    "ff": "old",
+    "ki": 12,
+    "complete": 16,
+    "no_recovery": 0,
+    "total_recoveries": 16,
+    "failures": []
+  },
+  {
+    "ff": "fit",
+    "ki": 2,
+    "complete": 16,
+    "no_recovery": 5,
+    "total_recoveries": 11,
+    "failures": []
+  },
+  {
+    "ff": "fit",
+    "ki": 8,
+    "complete": 16,
+    "no_recovery": 4,
+    "total_recoveries": 12,
+    "failures": []
+  },
+  {
+    "ff": "fit",
+    "ki": 12,
+    "complete": 16,
+    "no_recovery": 0,
+    "total_recoveries": 16,
+    "failures": []
+  }
+]

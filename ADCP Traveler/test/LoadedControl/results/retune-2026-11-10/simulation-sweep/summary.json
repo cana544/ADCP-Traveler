@@ -1,0 +1,170 @@
+[
+  {
+    "case": "old-v2-original-ki2",
+    "complete": 16,
+    "no_recovery": 4,
+    "total_recoveries": 12,
+    "failures": []
+  },
+  {
+    "case": "old-v2-original-ki4",
+    "complete": 16,
+    "no_recovery": 4,
+    "total_recoveries": 12,
+    "failures": []
+  },
+  {
+    "case": "old-v2-far-ki2",
+    "complete": 16,
+    "no_recovery": 12,
+    "total_recoveries": 4,
+    "failures": []
+  },
+  {
+    "case": "old-v2-far-ki4",
+    "complete": 16,
+    "no_recovery": 12,
+    "total_recoveries": 4,
+    "failures": []
+  },
+  {
+    "case": "old-v3-original-ki2",
+    "complete": 16,
+    "no_recovery": 5,
+    "total_recoveries": 11,
+    "failures": []
+  },
+  {
+    "case": "old-v3-original-ki4",
+    "complete": 16,
+    "no_recovery": 4,
+    "total_recoveries": 12,
+    "failures": []
+  },
+  {
+    "case": "old-v3-far-ki2",
+    "complete": 16,
+    "no_recovery": 16,
+    "total_recoveries": 0,
+    "failures": []
+  },
+  {
+    "case": "old-v3-far-ki4",
+    "complete": 16,
+    "no_recovery": 13,
+    "total_recoveries": 3,
+    "failures": []
+  },
+  {
+    "case": "old-v4-original-ki2",
+    "complete": 16,
+    "no_recovery": 5,
+    "total_recoveries": 11,
+    "failures": []
+  },
+  {
+    "case": "old-v4-original-ki4",
+    "complete": 16,
+    "no_recovery": 4,
+    "total_recoveries": 12,
+    "failures": []
+  },
+  {
+    "case": "old-v4-far-ki2",
+    "complete": 16,
+    "no_recovery": 16,
+    "total_recoveries": 0,
+    "failures": []
+  },
+  {
+    "case": "old-v4-far-ki4",
+    "complete": 16,
+    "no_recovery": 16,
+    "total_recoveries": 0,
+    "failures": []
+  },
+  {
+    "case": "fit-v2-original-ki2",
+    "complete": 16,
+    "no_recovery": 5,
+    "total_recoveries": 11,
+    "failures": []
+  },
+  {
+    "case": "fit-v2-original-ki4",
+    "complete": 16,
+    "no_recovery": 4,
+    "total_recoveries": 12,
+    "failures": []
+  },
+  {
+    "case": "fit-v2-far-ki2",
+    "complete": 16,
+    "no_recovery": 16,
+    "total_recoveries": 0,
+    "failures": []
+  },
+  {
+    "case": "fit-v2-far-ki4",
+    "complete": 16,
+    "no_recovery": 12,
+    "total_recoveries": 4,
+    "failures": []
+  },
+  {
+    "case": "fit-v3-original-ki2",
+    "complete": 16,
+    "no_recovery": 4,
+    "total_recoveries": 12,
+    "failures": []
+  },
+  {
+    "case": "fit-v3-original-ki4",
+    "complete": 16,
+    "no_recovery": 4,
+    "total_recoveries": 12,
+    "failures": []
+  },
+  {
+    "case": "fit-v3-far-ki2",
+    "complete": 16,
+    "no_recovery": 16,
+    "total_recoveries": 0,
+    "failures": []
+  },
+  {
+    "case": "fit-v3-far-ki4",
+    "complete": 16,
+    "no_recovery": 16,
+    "total_recoveries": 0,
+    "failures": []
+  },
+  {
+    "case": "fit-v4-original-ki2",
+    "complete": 16,
+    "no_recovery": 4,
+    "total_recoveries": 12,
+    "failures": []
+  },
+  {
+    "case": "fit-v4-original-ki4",
+    "complete": 16,
+    "no_recovery": 4,
+    "total_recoveries": 12,
+    "failures": []
+  },
+  {
+    "case": "fit-v4-far-ki2",
+    "complete": 16,
+    "no_recovery": 16,
+    "total_recoveries": 0,
+    "failures": []
+  },
+  {
+    "case": "fit-v4-far-ki4",
+    "complete": 16,
+    "no_recovery": 16,
+    "total_recoveries": 0,
+    "failures": []
+  }
+]
